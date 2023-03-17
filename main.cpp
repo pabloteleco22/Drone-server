@@ -17,41 +17,62 @@ enum class ProRetCod : int {
 };
 
 int main(int argc, char *argv[]) {
-	if (argc != 2) {
-		cerr << "Use: " << argv[0] << " udp://:<port>" << endl;
+	if (argc < 2) {
+		cerr << "Use: " << "<port1> <port2> ..." << endl;
 
 		exit(static_cast<int>(ProRetCod::BAD_ARGUMENT));
+	}
+
+	// Constants
+	const std::vector<System>::size_type expected_systems = argc - 1;
+	const unsigned int max_trys = 5;
+
+	std::vector<std::string> url_list {};
+
+	for (int i = 1; i < argc; ++i) {
+		url_list.push_back("udp://:" + std::string(argv[i]));
 	}
 
 	Mavsdk mavsdk;
 
 	cout << "Establishing connection..." << endl;
-	ConnectionResult connection_result = mavsdk.add_udp_connection(argv[1]);
-	if (connection_result == ConnectionResult::Success) {
-		cout << "Connection established" << endl;
-	} else {
-		cerr << "Connection failed: " << connection_result << endl;
+	for (std::string url : url_list) {
+		ConnectionResult connection_result = mavsdk.add_any_connection(url);
+		if (connection_result == ConnectionResult::Success) {
+			cout << "Connection established on " << url << endl;
+		} else {
+			cerr << "Connection failed on " << url << ": " << connection_result << endl;
 
-		exit(static_cast<int>(ProRetCod::CONNECTION_FAILED));
+			exit(static_cast<int>(ProRetCod::CONNECTION_FAILED));
+		}
 	}
 
-	mavsdk.subscribe_on_new_system([&mavsdk]() {
+	std::vector<System>::size_type number_of_systems = mavsdk.systems().size();
+
+	mavsdk.subscribe_on_new_system([&mavsdk, &number_of_systems, &expected_systems]() {
+		number_of_systems = mavsdk.systems().size();
+
 		std::shared_ptr<System> s = mavsdk.systems().back();
 		cout << "New system!" << endl;
 		cout << "System: " << s->get_system_id() << endl;
 		cout << "    Is connected: " << s->is_connected() << endl;
 		cout << "    Has autopilot: " << s->has_autopilot() << endl;
+
+		cout << "Systems found: " << number_of_systems << endl;
+		cout << "Remaining systems: " << expected_systems - number_of_systems << endl;
 		});
 	
-	std::this_thread::sleep_for(std::chrono::seconds(1));
+	unsigned int trys = 0;
+	while ((trys < max_trys) and (number_of_systems < expected_systems)) {
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+		++trys;
+	}
 
-	std::vector<System>::size_type number_of_systems = mavsdk.systems().size();
-	cout << mavsdk.systems().size() << " systems found" << endl;
-	if (number_of_systems > 0) {
-		cout << mavsdk.systems().size() << " systems found" << endl;
-	} else {
-		cout << "No systems found" << endl;
+	if (number_of_systems < expected_systems) {
+		cout << "Not all systems found" << endl;
 		exit(static_cast<int>(ProRetCod::NO_SYSTEMS_FOUND));
+	} else {
+		cout << "All systems found" << endl;
 	}
 
 	return static_cast<int>(ProRetCod::OK);

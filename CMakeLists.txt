@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Enable strict handling of warnings
 add_definitions("-Wall -Wextra -Werror")
+#add_definitions("-Wall -Wextra")
 
 # Finds MAVSDK when installed system wide.
 find_package(MAVSDK REQUIRED)
