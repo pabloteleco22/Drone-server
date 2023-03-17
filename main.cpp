@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
 
 	// Constants
 	const vector<System>::size_type expected_systems {static_cast<unsigned long>(argc - 1)};
-	const unsigned int max_attempts {30};
+	const std::chrono::seconds max_waiting_time {30};
 
 	// Store the URLs to access the drones
 	vector<std::string> url_list {};
@@ -70,30 +70,35 @@ int main(int argc, char *argv[]) {
 
 	vector<System>::size_type discovered_systems {mavsdk.systems().size()};
 
-	mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, &expected_systems]() {
-		discovered_systems = mavsdk.systems().size();
+ 	{
+		std::promise<void> prom {};
+		std::future fut {prom.get_future()};
 
-		shared_ptr<System> s {mavsdk.systems().back()};
-		cout << "New system!" << endl;
-		cout << "System: " << static_cast<int>(s->get_system_id()) << endl;
-		cout << "    Is connected: " << std::boolalpha << s->is_connected() << endl;
-		cout << "    Has autopilot: " << std::boolalpha << s->has_autopilot() << endl;
+		mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, expected_systems, &prom]() {
+			discovered_systems = mavsdk.systems().size();
+			vector<System>::size_type remaining_systems {expected_systems - discovered_systems};
 
-		cout << "Systems found: " << discovered_systems << endl;
-		cout << "Remaining systems: " << expected_systems - discovered_systems << endl;
+			shared_ptr<System> s {mavsdk.systems().back()};
+			cout << "Systems found: " << discovered_systems << endl;
+			cout << "Remaining systems: " << remaining_systems << endl;
+
+			if (remaining_systems == 0) {
+				prom.set_value();
+			}
 		});
-	
-	unsigned int attempt {0};
-	while ((attempt < max_attempts) and (discovered_systems < expected_systems)) {
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		++attempt;
-	}
+		
+		if (fut.wait_for(max_waiting_time) != std::future_status::ready) {
+			cout << "Not all systems found" << endl;
+			exit(static_cast<int>(ProRetCod::NO_SYSTEMS_FOUND));
+		} else {
+			cout << "Systems search completed" << endl;
+		}
 
-	if (discovered_systems < expected_systems) {
-		cout << "Not all systems found" << endl;
-		exit(static_cast<int>(ProRetCod::NO_SYSTEMS_FOUND));
-	} else {
-		cout << "All systems found" << endl;
+		for (shared_ptr<System> s : mavsdk.systems()) {
+			cout << "System: " << static_cast<int>(s->get_system_id()) << endl;
+			cout << "    Is connected: " << std::boolalpha << s->is_connected() << endl;
+			cout << "    Has autopilot: " << std::boolalpha << s->has_autopilot() << endl;
+		}
 	}
 
 	vector<shared_ptr<SystemPlugins>> system_plugins_list {};
@@ -103,35 +108,35 @@ int main(int argc, char *argv[]) {
 		system_plugins_list.push_back(system_plugins);
 	}
 
-	unsigned int sys_rate_correct = 0;
-	std::promise<Telemetry::Result> prom {};
-	std::future fut = prom.get_future();
-	//for (shared_ptr<SystemPlugins> sp : system_plugins_list) {
-	vector<shared_ptr<SystemPlugins>>::iterator it = system_plugins_list.begin();
-
-	while ((fut.wait_for(std::chrono::seconds(0)) != std::future_status::ready) and (it != system_plugins_list.end())) {
-		cout << "Setting rate in system " << static_cast<int>((*it)->system->get_system_id()) << endl;
-		(*it)->telemetry->set_rate_position_async(1.0, [it, &prom, &sys_rate_correct, expected_systems](Telemetry::Result result) {
-			if (result != Telemetry::Result::Success) {
-				cerr << "Failure to set rate in system " << static_cast<int>((*it)->system->get_system_id()) << endl;
-				prom.set_value(result);
-			} else {
-				cout << "Correctly set rate in system " << static_cast<int>((*it)->system->get_system_id()) << endl;
-				++sys_rate_correct;
-
-				if (sys_rate_correct == expected_systems) {
+	{
+		unsigned int sys_rate_correct = 0;
+		std::promise<Telemetry::Result> prom {};
+		std::future fut {prom.get_future()};
+		vector<shared_ptr<SystemPlugins>>::iterator it = system_plugins_list.begin();
+		while ((fut.wait_for(std::chrono::seconds(0)) != std::future_status::ready) and (it != system_plugins_list.end())) {
+			cout << "Setting rate in system " << static_cast<int>((*it)->system->get_system_id()) << endl;
+			(*it)->telemetry->set_rate_position_async(1.0, [it, &prom, &sys_rate_correct, expected_systems](Telemetry::Result result) {
+				if (result != Telemetry::Result::Success) {
+					cerr << "Failure to set rate in system " << static_cast<int>((*it)->system->get_system_id()) << endl;
 					prom.set_value(result);
-				}
-			}
-		});
-		std::advance(it, 1);
-	}
+				} else {
+					cout << "Correctly set rate in system " << static_cast<int>((*it)->system->get_system_id()) << endl;
+					++sys_rate_correct;
 
-	cout << "Waiting for the result of the rate setting operation" << endl;
-	if (fut.get() != Telemetry::Result::Success) {
-		exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
-	} else {
-		cout << "All rates defined" <<endl;
+					if (sys_rate_correct == expected_systems) {
+						prom.set_value(result);
+					}
+				}
+			});
+			std::advance(it, 1);
+		}
+
+		cout << "Waiting for the result of the rate setting operation" << endl;
+		if (fut.get() != Telemetry::Result::Success) {
+			exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
+		} else {
+			cout << "All rates defined" <<endl;
+		}
 	}
 
 	return static_cast<int>(ProRetCod::OK);
