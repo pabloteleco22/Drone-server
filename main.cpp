@@ -39,9 +39,22 @@ struct SystemPlugins {
 	shared_ptr<Action> action;
 };
 
+struct HealthPromResponse {
+	HealthPromResponse(int system_id, bool all_ok, shared_ptr<Telemetry> telemetry) {
+		this->system_id = system_id;
+		this->all_ok = all_ok;
+		this->telemetry = telemetry;
+	}
+
+	int system_id;
+	bool all_ok;
+	shared_ptr<Telemetry> telemetry;
+};
+
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
 void set_rate_position(vector<SystemPlugins> system_plugins_list, vector<System>::size_type expected_systems);
+void check_health_all_ok(vector<SystemPlugins> system_plugins_list, vector<System>::size_type expected_systems);
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
@@ -82,7 +95,9 @@ int main(int argc, char *argv[]) {
 		});
 	}
 
-	//while (true);
+	check_health_all_ok(system_plugins_list, expected_systems);
+
+	while (true);
 
 	return static_cast<int>(ProRetCod::OK);
 }
@@ -171,5 +186,55 @@ void set_rate_position(vector<SystemPlugins> system_plugins_list, vector<System>
 		}
 	} else {
 		cerr << "Error defining rates" << endl;
+	}
+}
+
+void check_health_all_ok(vector<SystemPlugins> system_plugins_list, vector<System>::size_type expected_systems) {
+	unsigned int health_all_ok = 0;
+	std::promise<HealthPromResponse> prom {};
+	std::future fut {prom.get_future()};
+	vector<SystemPlugins>::iterator it = system_plugins_list.begin();
+	while ((fut.wait_for(std::chrono::seconds(0)) != std::future_status::ready) and (it != system_plugins_list.end())) {
+		cout << "Checking health all ok in system " << static_cast<int>(it->system->get_system_id()) << endl;
+		Telemetry::HealthAllOkHandle handle = it->telemetry->subscribe_health_all_ok([it, &prom, &health_all_ok, expected_systems, &handle](bool result) {
+			if (not result) {
+				cerr << "Not all is ok in system " << static_cast<int>(it->system->get_system_id()) << endl;
+				prom.set_value(HealthPromResponse{static_cast<int>(it->system->get_system_id()), result, it->telemetry});
+			} else {
+				cout << "All is ok in system " << static_cast<int>(it->system->get_system_id()) << endl;
+				++health_all_ok;
+
+				if (health_all_ok == expected_systems) {
+					prom.set_value(HealthPromResponse{static_cast<int>(it->system->get_system_id()), result, it->telemetry});
+				}
+			}
+
+			it->telemetry->unsubscribe_health_all_ok(handle);
+		});
+		std::advance(it, 1);
+	}
+
+	cout << "Waiting for health all ok notifications" << endl;
+	if (fut.wait_for(max_waiting_time) == std::future_status::ready) {
+		HealthPromResponse resp = fut.get();
+
+		if (resp.all_ok) {
+			cout << "Health of all systems is ok" <<endl;
+		} else {
+			while (true);
+			Telemetry::Health health {resp.telemetry->health()};
+
+			cout << "Is accelerometer calibration ok: " << std::boolalpha << health.is_accelerometer_calibration_ok << endl;
+			cout << "Is armable: " << std::boolalpha << health.is_armable << endl;
+			cout << "Is global position ok: " << std::boolalpha << health.is_global_position_ok << endl;
+			cout << "Is gyrometer calibration ok: " << std::boolalpha << health.is_gyrometer_calibration_ok << endl;
+			cout << "Is home position ok: " << std::boolalpha << health.is_home_position_ok << endl;
+			cout << "Is local position ok: " << std::boolalpha << health.is_local_position_ok << endl;
+			cout << "Is magnetometer calibration ok: " << std::boolalpha << health.is_magnetometer_calibration_ok << endl;
+			
+			exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
+		}
+	} else {
+		cerr << "Error checking the health of all systems" << endl;
 	}
 }
