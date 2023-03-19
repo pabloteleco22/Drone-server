@@ -41,7 +41,7 @@ struct SystemPlugins {
 
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
-void set_rate_position(vector<shared_ptr<SystemPlugins>> system_plugins_list, vector<System>::size_type expected_systems);
+void set_rate_position(vector<SystemPlugins> system_plugins_list, vector<System>::size_type expected_systems);
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
@@ -64,11 +64,10 @@ int main(int argc, char *argv[]) {
 		cout << "    Has autopilot: " << std::boolalpha << s->has_autopilot() << endl;
 	}
 
-	vector<shared_ptr<SystemPlugins>> system_plugins_list {};
+	vector<SystemPlugins> system_plugins_list {};
 
 	for (shared_ptr<System> s : mavsdk.systems()) {
-		shared_ptr<SystemPlugins> system_plugins = std::make_shared<SystemPlugins>(*s);
-		system_plugins_list.push_back(system_plugins);
+		system_plugins_list.push_back(SystemPlugins(*s));
 	}
 
 	set_rate_position(system_plugins_list, expected_systems);
@@ -128,19 +127,19 @@ void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syste
 	}
 }
 
-void set_rate_position(vector<shared_ptr<SystemPlugins>> system_plugins_list, vector<System>::size_type expected_systems) {
+void set_rate_position(vector<SystemPlugins> system_plugins_list, vector<System>::size_type expected_systems) {
 	unsigned int sys_rate_correct = 0;
 	std::promise<Telemetry::Result> prom {};
 	std::future fut {prom.get_future()};
-	vector<shared_ptr<SystemPlugins>>::iterator it = system_plugins_list.begin();
+	vector<SystemPlugins>::iterator it = system_plugins_list.begin();
 	while ((fut.wait_for(std::chrono::seconds(0)) != std::future_status::ready) and (it != system_plugins_list.end())) {
-		cout << "Setting rate in system " << static_cast<int>((*it)->system->get_system_id()) << endl;
-		(*it)->telemetry->set_rate_position_async(1.0, [it, &prom, &sys_rate_correct, expected_systems](Telemetry::Result result) {
+		cout << "Setting rate in system " << static_cast<int>(it->system->get_system_id()) << endl;
+		it->telemetry->set_rate_position_async(1.0, [it, &prom, &sys_rate_correct, expected_systems](Telemetry::Result result) {
 			if (result != Telemetry::Result::Success) {
-				cerr << "Failure to set rate in system " << static_cast<int>((*it)->system->get_system_id()) << endl;
+				cerr << "Failure to set rate in system " << static_cast<int>(it->system->get_system_id()) << endl;
 				prom.set_value(result);
 			} else {
-				cout << "Correctly set rate in system " << static_cast<int>((*it)->system->get_system_id()) << endl;
+				cout << "Correctly set rate in system " << static_cast<int>(it->system->get_system_id()) << endl;
 				++sys_rate_correct;
 
 				if (sys_rate_correct == expected_systems) {
