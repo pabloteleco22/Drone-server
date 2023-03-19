@@ -102,8 +102,9 @@ void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syste
 
 	std::promise<void> prom {};
 	std::future fut {prom.get_future()};
+	unsigned int times_executed {0};
 
-	mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, expected_systems, &prom]() {
+	mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, expected_systems, &prom, &times_executed]() {
 		discovered_systems = mavsdk.systems().size();
 		vector<System>::size_type remaining_systems {expected_systems - discovered_systems};
 
@@ -111,7 +112,10 @@ void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syste
 		cout << "Systems found: " << discovered_systems << endl;
 		cout << "Remaining systems: " << remaining_systems << endl;
 
-		if (remaining_systems == 0) {
+		++times_executed;
+
+		if (times_executed == expected_systems) {
+			mavsdk.subscribe_on_new_system([]() {});
 			prom.set_value();
 		}
 	});
@@ -120,7 +124,6 @@ void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syste
 		cout << "Not all systems found" << endl;
 		exit(static_cast<int>(ProRetCod::NO_SYSTEMS_FOUND));
 	} else {
-		mavsdk.subscribe_on_new_system([]() {});
 		cout << "Systems search completed" << endl;
 	}
 }
@@ -149,9 +152,13 @@ void set_rate_position(vector<shared_ptr<SystemPlugins>> system_plugins_list, ve
 	}
 
 	cout << "Waiting for the result of the rate setting operation" << endl;
-	if (fut.get() != Telemetry::Result::Success) {
-		exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
+	if (fut.wait_for(max_waiting_time) == std::future_status::ready) {
+		if (fut.get() != Telemetry::Result::Success) {
+			exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
+		} else {
+			cout << "All rates defined" <<endl;
+		}
 	} else {
-		cout << "All rates defined" <<endl;
+		cerr << "Error defining rates" << endl;
 	}
 }
