@@ -72,6 +72,18 @@ int main(int argc, char *argv[]) {
 
 	set_rate_position(system_plugins_list, expected_systems);
 
+	for (SystemPlugins sp : system_plugins_list) {
+		sp.telemetry->subscribe_position([sp](Telemetry::Position pos) {
+			cout << "Position update" << endl;
+			cout << "System: " << static_cast<int>(sp.system->get_system_id()) << endl;
+			cout << "Altitude: " << pos.relative_altitude_m << " m" << endl;
+            cout << "Latitude: " << pos.latitude_deg << endl;
+            cout << "Longitude: " << pos.longitude_deg << endl << endl;
+		});
+	}
+
+	while (true);
+
 	return static_cast<int>(ProRetCod::OK);
 }
 
