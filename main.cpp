@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 		});
 	}
 
-	while (true);
+	//while (true);
 
 	return static_cast<int>(ProRetCod::OK);
 }
@@ -115,7 +115,7 @@ void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syste
 	std::future fut {prom.get_future()};
 	unsigned int times_executed {0};
 
-	mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, expected_systems, &prom, &times_executed]() {
+	Mavsdk::NewSystemHandle system_handle = mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, expected_systems, &prom, &times_executed, &system_handle]() {
 		discovered_systems = mavsdk.systems().size();
 		vector<System>::size_type remaining_systems {expected_systems - discovered_systems};
 
@@ -126,7 +126,7 @@ void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syste
 		++times_executed;
 
 		if (times_executed == expected_systems) {
-			mavsdk.subscribe_on_new_system([]() {});
+			mavsdk.unsubscribe_on_new_system(system_handle);
 			prom.set_value();
 		}
 	});
