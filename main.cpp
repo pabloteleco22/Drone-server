@@ -41,7 +41,8 @@ struct SystemPlugins {
 
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
-void set_rate_position(vector<SystemPlugins> system_plugins_list, vector<System>::size_type expected_systems);
+void set_rate_position(vector<SystemPlugins> system_plugins_list);
+void check_health_all_ok(vector<SystemPlugins> system_plugins_list);
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
@@ -70,7 +71,7 @@ int main(int argc, char *argv[]) {
 		system_plugins_list.push_back(SystemPlugins(*s));
 	}
 
-	set_rate_position(system_plugins_list, expected_systems);
+	set_rate_position(system_plugins_list);
 
 	for (SystemPlugins sp : system_plugins_list) {
 		sp.telemetry->subscribe_position([sp](Telemetry::Position pos) {
@@ -81,6 +82,8 @@ int main(int argc, char *argv[]) {
             cout << "Longitude: " << pos.longitude_deg << endl << endl;
 		});
 	}
+
+	check_health_all_ok(system_plugins_list);
 
 	//while (true);
 
@@ -139,37 +142,44 @@ void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syste
 	}
 }
 
-void set_rate_position(vector<SystemPlugins> system_plugins_list, vector<System>::size_type expected_systems) {
-	unsigned int sys_rate_correct = 0;
-	std::promise<Telemetry::Result> prom {};
-	std::future fut {prom.get_future()};
-	vector<SystemPlugins>::iterator it = system_plugins_list.begin();
-	while ((fut.wait_for(std::chrono::seconds(0)) != std::future_status::ready) and (it != system_plugins_list.end())) {
-		cout << "Setting rate in system " << static_cast<int>(it->system->get_system_id()) << endl;
-		it->telemetry->set_rate_position_async(1.0, [it, &prom, &sys_rate_correct, expected_systems](Telemetry::Result result) {
-			if (result != Telemetry::Result::Success) {
-				cerr << "Failure to set rate in system " << static_cast<int>(it->system->get_system_id()) << endl;
-				prom.set_value(result);
-			} else {
-				cout << "Correctly set rate in system " << static_cast<int>(it->system->get_system_id()) << endl;
-				++sys_rate_correct;
+void set_rate_position(vector<SystemPlugins> system_plugins_list) {
+	for (SystemPlugins sp : system_plugins_list) {
+		cout << "Setting rate in system " << static_cast<int>(sp.system->get_system_id()) << endl;
 
-				if (sys_rate_correct == expected_systems) {
-					prom.set_value(result);
-				}
-			}
-		});
-		std::advance(it, 1);
-	}
-
-	cout << "Waiting for the result of the rate setting operation" << endl;
-	if (fut.wait_for(max_waiting_time) == std::future_status::ready) {
-		if (fut.get() != Telemetry::Result::Success) {
-			exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
+		Telemetry::Result result = sp.telemetry->set_rate_position(1.0); 
+		if (result == Telemetry::Result::Success) {
+			cout << "Correctly set rate in system " << static_cast<int>(sp.system->get_system_id()) << endl;
 		} else {
-			cout << "All rates defined" <<endl;
+			cerr << "Failure to set rate in system " << static_cast<int>(sp.system->get_system_id()) << endl;
+			exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
 		}
-	} else {
-		cerr << "Error defining rates" << endl;
 	}
+
+	cout << "All rates defined" <<endl;
+}
+
+void check_health_all_ok(vector<SystemPlugins> system_plugins_list) {
+	for (SystemPlugins sp : system_plugins_list) {
+		cout << "Checking all ok in system " << static_cast<int>(sp.system->get_system_id()) << endl;
+
+		bool all_ok = sp.telemetry->health_all_ok(); 
+		if (all_ok) {
+			cout << "All ok in system " << static_cast<int>(sp.system->get_system_id()) << endl;
+		} else {
+			cerr << "Not all ok in system " << static_cast<int>(sp.system->get_system_id()) << endl;
+			Telemetry::Health health {sp.telemetry->health()};
+
+			cout << "is accelerometer calibration ok: " << std::boolalpha << health.is_accelerometer_calibration_ok << endl;
+			cout << "is armable: " << std::boolalpha << health.is_armable << endl;
+			cout << "is global position ok: " << std::boolalpha << health.is_global_position_ok << endl;
+			cout << "is gyrometer calibration ok: " << std::boolalpha << health.is_gyrometer_calibration_ok << endl;
+			cout << "is home position ok: " << std::boolalpha << health.is_home_position_ok << endl;
+			cout << "is local position ok: " << std::boolalpha << health.is_local_position_ok << endl;
+			cout << "is magnetometer calibration ok: " << std::boolalpha << health.is_magnetometer_calibration_ok << endl;
+
+			exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
+		}
+	}
+
+	cout << "All ok in the health of the systems" <<endl;
 }
