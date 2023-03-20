@@ -14,7 +14,7 @@ using std::vector;
 using std::shared_ptr;
 
 // Constants
-const std::chrono::seconds max_waiting_time {30};
+const std::chrono::seconds max_waiting_time{30};
 
 // Process return code
 enum class ProRetCod : int {
@@ -51,7 +51,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Constants
-	const vector<System>::size_type expected_systems {static_cast<unsigned long>(argc - 1)};
+	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
+	const float takeoff_altitude{3.0F};
+	const int64_t refresh_time{1L};
 
 	Mavsdk mavsdk;
 	std::mutex mut;
@@ -65,22 +67,22 @@ int main(int argc, char *argv[]) {
 		cout << "    Has autopilot: " << std::boolalpha << s->has_autopilot() << endl;
 	}
 
-	vector<SystemPlugins> system_plugins_list {};
+	vector<SystemPlugins> system_plugins_list{};
 
 	for (shared_ptr<System> s : mavsdk.systems()) {
 		system_plugins_list.push_back(SystemPlugins(*s));
 	}
 
-	vector<shared_ptr<std::thread>> threads_for_waiting {};
+	vector<shared_ptr<std::thread>> threads_for_waiting{};
 
 	// Sets the position packet sending rate
-	bool operation_ok = true;
-	vector<SystemPlugins>::iterator sp {system_plugins_list.begin()};
+	bool operation_ok{true};
+	vector<SystemPlugins>::iterator sp{system_plugins_list.begin()};
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
 			cout << "Setting rate in system " << static_cast<int>(sp->system->get_system_id()) << endl;
 
-			Telemetry::Result result = sp->telemetry->set_rate_position(1.0); 
+			Telemetry::Result result{sp->telemetry->set_rate_position(1.0)};
 			if (result == Telemetry::Result::Success) {
 				cout << "Correctly set rate in system " << static_cast<int>(sp->system->get_system_id()) << endl;
 			} else {
@@ -99,32 +101,22 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "All rates defined" <<endl;
+		cout << "All rates defined" << endl;
 	} else {
 		exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
 	}
-
-//	for (SystemPlugins sp : system_plugins_list) {
-//		sp.telemetry->subscribe_position([sp](Telemetry::Position pos) {
-//			cout << "Position update" << endl;
-//			cout << "System: " << static_cast<int>(sp.system->get_system_id()) << endl;
-//			cout << "Altitude: " << pos.relative_altitude_m << " m" << endl;
-//            cout << "Latitude: " << pos.latitude_deg << endl;
-//            cout << "Longitude: " << pos.longitude_deg << endl << endl;
-//		});
-//	}
 
 	// Check the health of all systems
 	threads_for_waiting.clear();
 	operation_ok = true;
 	sp = system_plugins_list.begin();
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
 			mut.lock();
 			cout << "Checking system " << static_cast<int>(sp->system->get_system_id()) << endl;
 			mut.unlock();
 
-			bool all_ok {sp->telemetry->health_all_ok()}; 
+			bool all_ok{sp->telemetry->health_all_ok()}; 
 			if (all_ok) {
 				mut.lock();
 				cout << "All ok in system " << static_cast<int>(sp->system->get_system_id()) << endl;
@@ -133,7 +125,7 @@ int main(int argc, char *argv[]) {
 				mut.lock();
 				cerr << "Not all ok in system " << static_cast<int>(sp->system->get_system_id()) << endl;
 				mut.unlock();
-				Telemetry::Health health {sp->telemetry->health()};
+				Telemetry::Health health{sp->telemetry->health()};
 
 				mut.lock();
 				cerr << "System " << static_cast<int>(sp->system->get_system_id()) << endl;
@@ -158,7 +150,7 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "All systems ok" <<endl;
+		cout << "All systems ok" << endl;
 	} else {
 		exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
 	}
@@ -168,10 +160,10 @@ int main(int argc, char *argv[]) {
 	operation_ok = true;
 	sp = system_plugins_list.begin();
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut, takeoff_altitude]() {
 			cout << "Setting takeoff altitude of system " << static_cast<int>(sp->system->get_system_id()) << endl;
 
-			Action::Result result {sp->action->set_takeoff_altitude(3.0)}; 
+			Action::Result result{sp->action->set_takeoff_altitude(takeoff_altitude)}; 
 			if (result == Action::Result::Success) {
 				cout << "Takeoff altitude set on system " << static_cast<int>(sp->system->get_system_id()) << endl;
 			} else {
@@ -192,7 +184,7 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "Takeoff altitude of all systems set" <<endl;
+		cout << "Takeoff altitude of all systems set" << endl;
 	} else {
 		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
 	}
@@ -202,10 +194,10 @@ int main(int argc, char *argv[]) {
 	operation_ok = true;
 	sp = system_plugins_list.begin();
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
 			cout << "Arming system " << static_cast<int>(sp->system->get_system_id()) << endl;
 
-			Action::Result result {sp->action->arm()}; 
+			Action::Result result{sp->action->arm()}; 
 			if (result == Action::Result::Success) {
 				cout << "System armed " << static_cast<int>(sp->system->get_system_id()) << endl;
 			} else {
@@ -226,7 +218,7 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "All armed" <<endl;
+		cout << "All armed" << endl;
 	} else {
 		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
 	}
@@ -236,12 +228,21 @@ int main(int argc, char *argv[]) {
 	operation_ok = true;
 	sp = system_plugins_list.begin();
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut, takeoff_altitude, refresh_time]() {
 			cout << "Taking off system " << static_cast<int>(sp->system->get_system_id()) << endl;
 
-			Action::Result result {sp->action->takeoff()}; 
+			Action::Result result{sp->action->takeoff()}; 
 			if (result == Action::Result::Success) {
-				cout << "System on air " << static_cast<int>(sp->system->get_system_id()) << endl;
+				cout << "System " << static_cast<int>(sp->system->get_system_id()) << " taking off" << endl;
+
+				// Waiting to finish takeoff
+				float current_altitude{sp->telemetry->position().relative_altitude_m};
+				cout << "Altitud sistema " << static_cast<int>(sp->system->get_system_id()) << ": " << current_altitude << endl;
+				while ((std::isnan(current_altitude)) or (current_altitude < takeoff_altitude)) {
+					cout << "System " << static_cast<int>(sp->system->get_system_id()) << " taking off" << endl;
+					std::this_thread::sleep_for(std::chrono::seconds{refresh_time});
+					current_altitude = sp->telemetry->position().relative_altitude_m;
+				}
 			} else {
 				cerr << "Error taking off system " << static_cast<int>(sp->system->get_system_id()) << endl;
 				cerr << result << endl;
@@ -260,19 +261,57 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "All systems on air" <<endl;
+		cout << "All systems on air" << endl;
 	} else {
 		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
 	}
 
-	//while (true);
+	// Landing
+	threads_for_waiting.clear();
+	operation_ok = true;
+	sp = system_plugins_list.begin();
+	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut, refresh_time]() {
+			cout << "Landing system " << static_cast<int>(sp->system->get_system_id()) << endl;
+
+			Action::Result result{sp->action->land()}; 
+			if (result == Action::Result::Success) {
+				cout << "System " << static_cast<int>(sp->system->get_system_id()) << " landing"<< endl;
+
+				// Waiting to finish landing
+				while (sp->telemetry->armed()) {
+					cout << "System " << static_cast<int>(sp->system->get_system_id()) << " landing"<< endl;
+					std::this_thread::sleep_for(std::chrono::seconds{refresh_time});
+				}
+			} else {
+				cerr << "Error landing system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				cerr << result << endl;
+
+				mut.lock();
+				operation_ok = false;
+				mut.unlock();
+			}
+		}}));
+
+		std::advance(sp, 1);
+	}
+
+	for (shared_ptr<std::thread> th : threads_for_waiting) {
+		th->join();
+	}
+
+    if (operation_ok) {
+		cout << "All systems on ground" << endl;
+	} else {
+		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
+	}
 
 	return static_cast<int>(ProRetCod::OK);
 }
 
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 	// Store the URLs to access the drones
-	vector<std::string> url_list {};
+	vector<std::string> url_list{};
 
 	for (int i {1}; i < argc; ++i) {
 		url_list.push_back("udp://:" + std::string {argv[i]});
@@ -280,7 +319,7 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 
 	cout << "Establishing connection..." << endl;
 	for (std::string url : url_list) {
-		ConnectionResult connection_result {mavsdk.add_any_connection(url)};
+		ConnectionResult connection_result{mavsdk.add_any_connection(url)};
 		if (connection_result == ConnectionResult::Success) {
 			cout << "Connection established on " << url << endl;
 		} else {
@@ -294,8 +333,8 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems) {
 	vector<System>::size_type discovered_systems {mavsdk.systems().size()};
 
-	std::promise<void> prom {};
-	std::future fut {prom.get_future()};
+	std::promise<void> prom{};
+	std::future fut{prom.get_future()};
 	unsigned int times_executed {0};
 
 	Mavsdk::NewSystemHandle system_handle = mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, expected_systems, &prom, &times_executed, &system_handle]() {
