@@ -120,15 +120,23 @@ int main(int argc, char *argv[]) {
 	sp = system_plugins_list.begin();
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
+			mut.lock();
 			cout << "Checking system " << static_cast<int>(sp->system->get_system_id()) << endl;
+			mut.unlock();
 
 			bool all_ok {sp->telemetry->health_all_ok()}; 
 			if (all_ok) {
+				mut.lock();
 				cout << "All ok in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				mut.unlock();
 			} else {
+				mut.lock();
 				cerr << "Not all ok in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				mut.unlock();
 				Telemetry::Health health {sp->telemetry->health()};
 
+				mut.lock();
+				cerr << "System " << static_cast<int>(sp->system->get_system_id()) << endl;
 				cout << "is accelerometer calibration ok: " << std::boolalpha << health.is_accelerometer_calibration_ok << endl;
 				cout << "is armable: " << std::boolalpha << health.is_armable << endl;
 				cout << "is global position ok: " << std::boolalpha << health.is_global_position_ok << endl;
@@ -137,7 +145,6 @@ int main(int argc, char *argv[]) {
 				cout << "is local position ok: " << std::boolalpha << health.is_local_position_ok << endl;
 				cout << "is magnetometer calibration ok: " << std::boolalpha << health.is_magnetometer_calibration_ok << endl;
 
-				mut.lock();
 				operation_ok = false;
 				mut.unlock();
 			}
@@ -154,6 +161,40 @@ int main(int argc, char *argv[]) {
 		cout << "All systems ok" <<endl;
 	} else {
 		exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
+	}
+
+	// Set takeoff altitude
+	threads_for_waiting.clear();
+	operation_ok = true;
+	sp = system_plugins_list.begin();
+	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
+			cout << "Setting takeoff altitude of system " << static_cast<int>(sp->system->get_system_id()) << endl;
+
+			Action::Result result {sp->action->set_takeoff_altitude(3.0)}; 
+			if (result == Action::Result::Success) {
+				cout << "Takeoff altitude set on system " << static_cast<int>(sp->system->get_system_id()) << endl;
+			} else {
+				cerr << "Error setting takeoff altitude on system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				cerr << result << endl;
+
+				mut.lock();
+				operation_ok = false;
+				mut.unlock();
+			}
+		}}));
+
+		std::advance(sp, 1);
+	}
+
+	for (shared_ptr<std::thread> th : threads_for_waiting) {
+		th->join();
+	}
+
+    if (operation_ok) {
+		cout << "Takeoff altitude of all systems set" <<endl;
+	} else {
+		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
 	}
 
 	// Arming systems
@@ -186,6 +227,40 @@ int main(int argc, char *argv[]) {
 
     if (operation_ok) {
 		cout << "All armed" <<endl;
+	} else {
+		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
+	}
+
+	// Taking off
+	threads_for_waiting.clear();
+	operation_ok = true;
+	sp = system_plugins_list.begin();
+	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
+			cout << "Taking off system " << static_cast<int>(sp->system->get_system_id()) << endl;
+
+			Action::Result result {sp->action->takeoff()}; 
+			if (result == Action::Result::Success) {
+				cout << "System on air " << static_cast<int>(sp->system->get_system_id()) << endl;
+			} else {
+				cerr << "Error taking off system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				cerr << result << endl;
+
+				mut.lock();
+				operation_ok = false;
+				mut.unlock();
+			}
+		}}));
+
+		std::advance(sp, 1);
+	}
+
+	for (shared_ptr<std::thread> th : threads_for_waiting) {
+		th->join();
+	}
+
+    if (operation_ok) {
+		cout << "All systems on air" <<endl;
 	} else {
 		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
 	}
