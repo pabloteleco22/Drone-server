@@ -42,7 +42,6 @@ struct SystemPlugins {
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
 bool check_operation_ok(bool &operation_ok, std::mutex &mut);
-void arm(vector<SystemPlugins> system_plugins_list);
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
@@ -157,7 +156,39 @@ int main(int argc, char *argv[]) {
 		exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
 	}
 
-	//arm(system_plugins_list);
+	// Arming systems
+	threads_for_waiting.clear();
+	operation_ok = true;
+	sp = system_plugins_list.begin();
+	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
+			cout << "Arming system " << static_cast<int>(sp->system->get_system_id()) << endl;
+
+			Action::Result result {sp->action->arm()}; 
+			if (result == Action::Result::Success) {
+				cout << "System armed " << static_cast<int>(sp->system->get_system_id()) << endl;
+			} else {
+				cerr << "Error arming system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				cerr << result << endl;
+
+				mut.lock();
+				operation_ok = false;
+				mut.unlock();
+			}
+		}}));
+
+		std::advance(sp, 1);
+	}
+
+	for (shared_ptr<std::thread> th : threads_for_waiting) {
+		th->join();
+	}
+
+    if (operation_ok) {
+		cout << "All armed" <<endl;
+	} else {
+		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
+	}
 
 	//while (true);
 
@@ -224,22 +255,4 @@ bool check_operation_ok(bool &operation_ok, std::mutex &mut) {
 	mut.unlock();
 
 	return ret;
-}
-
-void arm(vector<SystemPlugins> system_plugins_list) {
-	for (SystemPlugins sp : system_plugins_list) {
-		cout << "Arming system " << static_cast<int>(sp.system->get_system_id()) << endl;
-
-		Action::Result result {sp.action->arm()}; 
-		if (result == Action::Result::Success) {
-			cout << "System armed " << static_cast<int>(sp.system->get_system_id()) << endl;
-		} else {
-			cerr << "Error arming system " << static_cast<int>(sp.system->get_system_id()) << endl;
-			cerr << result << endl;
-
-			exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
-		}
-	}
-
-	cout << "All systems armed" <<endl;
 }
