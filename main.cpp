@@ -43,6 +43,7 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
 void set_rate_position(vector<SystemPlugins> system_plugins_list);
 void check_health_all_ok(vector<SystemPlugins> system_plugins_list);
+void arm(vector<SystemPlugins> system_plugins_list);
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
@@ -84,6 +85,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	check_health_all_ok(system_plugins_list);
+
+	arm(system_plugins_list);
 
 	//while (true);
 
@@ -162,7 +165,7 @@ void check_health_all_ok(vector<SystemPlugins> system_plugins_list) {
 	for (SystemPlugins sp : system_plugins_list) {
 		cout << "Checking all ok in system " << static_cast<int>(sp.system->get_system_id()) << endl;
 
-		bool all_ok = sp.telemetry->health_all_ok(); 
+		bool all_ok {sp.telemetry->health_all_ok()}; 
 		if (all_ok) {
 			cout << "All ok in system " << static_cast<int>(sp.system->get_system_id()) << endl;
 		} else {
@@ -182,4 +185,22 @@ void check_health_all_ok(vector<SystemPlugins> system_plugins_list) {
 	}
 
 	cout << "All ok in the health of the systems" <<endl;
+}
+
+void arm(vector<SystemPlugins> system_plugins_list) {
+	for (SystemPlugins sp : system_plugins_list) {
+		cout << "Arming system " << static_cast<int>(sp.system->get_system_id()) << endl;
+
+		Action::Result result {sp.action->arm()}; 
+		if (result == Action::Result::Success) {
+			cout << "System armed " << static_cast<int>(sp.system->get_system_id()) << endl;
+		} else {
+			cerr << "Error arming system " << static_cast<int>(sp.system->get_system_id()) << endl;
+			cerr << result << endl;
+
+			exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
+		}
+	}
+
+	cout << "All systems armed" <<endl;
 }
