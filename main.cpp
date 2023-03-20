@@ -41,7 +41,7 @@ struct SystemPlugins {
 
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
-void set_rate_position(vector<SystemPlugins> system_plugins_list);
+bool check_operation_ok(bool &operation_ok, std::mutex &mut);
 void check_health_all_ok(vector<SystemPlugins> system_plugins_list);
 void arm(vector<SystemPlugins> system_plugins_list);
 
@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
 	const vector<System>::size_type expected_systems {static_cast<unsigned long>(argc - 1)};
 
 	Mavsdk mavsdk;
+	std::mutex mut;
 
 	establish_connections(argc, argv, mavsdk);
 	wait_systems(mavsdk, expected_systems);
@@ -72,17 +73,48 @@ int main(int argc, char *argv[]) {
 		system_plugins_list.push_back(SystemPlugins(*s));
 	}
 
-	set_rate_position(system_plugins_list);
+	vector<shared_ptr<std::thread>> threads_for_waiting {};
 
-	for (SystemPlugins sp : system_plugins_list) {
-		sp.telemetry->subscribe_position([sp](Telemetry::Position pos) {
-			cout << "Position update" << endl;
-			cout << "System: " << static_cast<int>(sp.system->get_system_id()) << endl;
-			cout << "Altitude: " << pos.relative_altitude_m << " m" << endl;
-            cout << "Latitude: " << pos.latitude_deg << endl;
-            cout << "Longitude: " << pos.longitude_deg << endl << endl;
-		});
+	bool operation_ok = true;
+	vector<SystemPlugins>::iterator sp {system_plugins_list.begin()};
+	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
+		cout << "Holaaa" << endl;
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
+			cout << "Setting rate in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+
+			Telemetry::Result result = sp->telemetry->set_rate_position(1.0); 
+			if (result == Telemetry::Result::Success) {
+				cout << "Correctly set rate in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+			} else {
+				cerr << "Failure to set rate in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				mut.lock();
+				operation_ok = false;
+				mut.unlock();
+			}
+		}}));
+
+		std::advance(sp, 1);
 	}
+
+	for (shared_ptr<std::thread> th : threads_for_waiting) {
+		th->join();
+	}
+
+    if (operation_ok) {
+		cout << "All rates defined" <<endl;
+	} else {
+		exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
+	}
+
+//	for (SystemPlugins sp : system_plugins_list) {
+//		sp.telemetry->subscribe_position([sp](Telemetry::Position pos) {
+//			cout << "Position update" << endl;
+//			cout << "System: " << static_cast<int>(sp.system->get_system_id()) << endl;
+//			cout << "Altitude: " << pos.relative_altitude_m << " m" << endl;
+//            cout << "Latitude: " << pos.latitude_deg << endl;
+//            cout << "Longitude: " << pos.longitude_deg << endl << endl;
+//		});
+//	}
 
 	check_health_all_ok(system_plugins_list);
 
@@ -145,20 +177,14 @@ void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syste
 	}
 }
 
-void set_rate_position(vector<SystemPlugins> system_plugins_list) {
-	for (SystemPlugins sp : system_plugins_list) {
-		cout << "Setting rate in system " << static_cast<int>(sp.system->get_system_id()) << endl;
+bool check_operation_ok(bool &operation_ok, std::mutex &mut) {
+	bool ret;
 
-		Telemetry::Result result = sp.telemetry->set_rate_position(1.0); 
-		if (result == Telemetry::Result::Success) {
-			cout << "Correctly set rate in system " << static_cast<int>(sp.system->get_system_id()) << endl;
-		} else {
-			cerr << "Failure to set rate in system " << static_cast<int>(sp.system->get_system_id()) << endl;
-			exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
-		}
-	}
+	mut.lock();
+	ret = operation_ok;
+	mut.unlock();
 
-	cout << "All rates defined" <<endl;
+	return ret;
 }
 
 void check_health_all_ok(vector<SystemPlugins> system_plugins_list) {
