@@ -42,7 +42,6 @@ struct SystemPlugins {
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
 bool check_operation_ok(bool &operation_ok, std::mutex &mut);
-void check_health_all_ok(vector<SystemPlugins> system_plugins_list);
 void arm(vector<SystemPlugins> system_plugins_list);
 
 int main(int argc, char *argv[]) {
@@ -75,10 +74,10 @@ int main(int argc, char *argv[]) {
 
 	vector<shared_ptr<std::thread>> threads_for_waiting {};
 
+	// Sets the position packet sending rate
 	bool operation_ok = true;
 	vector<SystemPlugins>::iterator sp {system_plugins_list.begin()};
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
-		cout << "Holaaa" << endl;
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
 			cout << "Setting rate in system " << static_cast<int>(sp->system->get_system_id()) << endl;
 
@@ -116,9 +115,49 @@ int main(int argc, char *argv[]) {
 //		});
 //	}
 
-	check_health_all_ok(system_plugins_list);
+	// Check the health of all systems
+	threads_for_waiting.clear();
+	operation_ok = true;
+	sp = system_plugins_list.begin();
+	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread {[sp, &operation_ok, &mut]() {
+			cout << "Checking system " << static_cast<int>(sp->system->get_system_id()) << endl;
 
-	arm(system_plugins_list);
+			bool all_ok {sp->telemetry->health_all_ok()}; 
+			if (all_ok) {
+				cout << "All ok in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+			} else {
+				cerr << "Not all ok in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				Telemetry::Health health {sp->telemetry->health()};
+
+				cout << "is accelerometer calibration ok: " << std::boolalpha << health.is_accelerometer_calibration_ok << endl;
+				cout << "is armable: " << std::boolalpha << health.is_armable << endl;
+				cout << "is global position ok: " << std::boolalpha << health.is_global_position_ok << endl;
+				cout << "is gyrometer calibration ok: " << std::boolalpha << health.is_gyrometer_calibration_ok << endl;
+				cout << "is home position ok: " << std::boolalpha << health.is_home_position_ok << endl;
+				cout << "is local position ok: " << std::boolalpha << health.is_local_position_ok << endl;
+				cout << "is magnetometer calibration ok: " << std::boolalpha << health.is_magnetometer_calibration_ok << endl;
+
+				mut.lock();
+				operation_ok = false;
+				mut.unlock();
+			}
+		}}));
+
+		std::advance(sp, 1);
+	}
+
+	for (shared_ptr<std::thread> th : threads_for_waiting) {
+		th->join();
+	}
+
+    if (operation_ok) {
+		cout << "All systems ok" <<endl;
+	} else {
+		exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
+	}
+
+	//arm(system_plugins_list);
 
 	//while (true);
 
@@ -185,32 +224,6 @@ bool check_operation_ok(bool &operation_ok, std::mutex &mut) {
 	mut.unlock();
 
 	return ret;
-}
-
-void check_health_all_ok(vector<SystemPlugins> system_plugins_list) {
-	for (SystemPlugins sp : system_plugins_list) {
-		cout << "Checking all ok in system " << static_cast<int>(sp.system->get_system_id()) << endl;
-
-		bool all_ok {sp.telemetry->health_all_ok()}; 
-		if (all_ok) {
-			cout << "All ok in system " << static_cast<int>(sp.system->get_system_id()) << endl;
-		} else {
-			cerr << "Not all ok in system " << static_cast<int>(sp.system->get_system_id()) << endl;
-			Telemetry::Health health {sp.telemetry->health()};
-
-			cout << "is accelerometer calibration ok: " << std::boolalpha << health.is_accelerometer_calibration_ok << endl;
-			cout << "is armable: " << std::boolalpha << health.is_armable << endl;
-			cout << "is global position ok: " << std::boolalpha << health.is_global_position_ok << endl;
-			cout << "is gyrometer calibration ok: " << std::boolalpha << health.is_gyrometer_calibration_ok << endl;
-			cout << "is home position ok: " << std::boolalpha << health.is_home_position_ok << endl;
-			cout << "is local position ok: " << std::boolalpha << health.is_local_position_ok << endl;
-			cout << "is magnetometer calibration ok: " << std::boolalpha << health.is_magnetometer_calibration_ok << endl;
-
-			exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
-		}
-	}
-
-	cout << "All ok in the health of the systems" <<endl;
 }
 
 void arm(vector<SystemPlugins> system_plugins_list) {
