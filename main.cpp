@@ -1,6 +1,7 @@
 #include <mavsdk/mavsdk.h>
 #include <mavsdk/plugins/action/action.h>
 #include <mavsdk/plugins/telemetry/telemetry.h>
+#include <mavsdk/plugins/offboard/offboard.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -15,6 +16,8 @@ using std::shared_ptr;
 
 // Constants
 const std::chrono::seconds max_waiting_time{30};
+const float takeoff_altitude{3.0F};
+const int64_t refresh_time{1L};
 
 // Process return code
 enum class ProRetCod : int {
@@ -23,7 +26,8 @@ enum class ProRetCod : int {
 	CONNECTION_FAILED = 2,
 	NO_SYSTEMS_FOUND = 3,
 	TELEMETRY_FAILURE = 4,
-	ACTION_FAILURE = 5
+	ACTION_FAILURE = 5,
+	OFFBOARD_FAILURE = 6
 };
 
 // Struct to save a system and its telemetry and action objects
@@ -32,11 +36,13 @@ struct SystemPlugins {
 		this->system = &system;
 		telemetry = std::make_shared<Telemetry>(system);
 		action = std::make_shared<Action>(system);
+		offboard = std::make_shared<Offboard>(system);
 	}
 
 	System *system;
 	shared_ptr<Telemetry> telemetry;
 	shared_ptr<Action> action;
+	shared_ptr<Offboard> offboard;
 };
 
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
@@ -52,8 +58,6 @@ int main(int argc, char *argv[]) {
 
 	// Constants
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
-	const float takeoff_altitude{3.0F};
-	const int64_t refresh_time{1L};
 
 	Mavsdk mavsdk;
 	std::mutex mut;
@@ -82,7 +86,7 @@ int main(int argc, char *argv[]) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
 			cout << "Setting rate in system " << static_cast<int>(sp->system->get_system_id()) << endl;
 
-			Telemetry::Result result{sp->telemetry->set_rate_position(1.0)};
+			Telemetry::Result result{sp->telemetry->set_rate_position_velocity_ned(1.0)};
 			if (result == Telemetry::Result::Success) {
 				cout << "Correctly set rate in system " << static_cast<int>(sp->system->get_system_id()) << endl;
 			} else {
@@ -110,6 +114,7 @@ int main(int argc, char *argv[]) {
 	threads_for_waiting.clear();
 	operation_ok = true;
 	sp = system_plugins_list.begin();
+
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
 			mut.lock();
@@ -160,7 +165,7 @@ int main(int argc, char *argv[]) {
 	operation_ok = true;
 	sp = system_plugins_list.begin();
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut, takeoff_altitude]() {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
 			cout << "Setting takeoff altitude of system " << static_cast<int>(sp->system->get_system_id()) << endl;
 
 			Action::Result result{sp->action->set_takeoff_altitude(takeoff_altitude)}; 
@@ -228,7 +233,7 @@ int main(int argc, char *argv[]) {
 	operation_ok = true;
 	sp = system_plugins_list.begin();
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut, takeoff_altitude, refresh_time]() {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
 			cout << "Taking off system " << static_cast<int>(sp->system->get_system_id()) << endl;
 
 			Action::Result result{sp->action->takeoff()}; 
@@ -266,25 +271,20 @@ int main(int argc, char *argv[]) {
 		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
 	}
 
-	// Landing
+	// Setting a setpoint
 	threads_for_waiting.clear();
 	operation_ok = true;
 	sp = system_plugins_list.begin();
+	Offboard::PositionNedYaw expected_position_yaw{10.0f, 0.0f, -10.0f, 0.0f};
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut, refresh_time]() {
-			cout << "Landing system " << static_cast<int>(sp->system->get_system_id()) << endl;
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut, &expected_position_yaw]() {
+			cout << "System " << static_cast<int>(sp->system->get_system_id()) << " go 10 meters forward" << endl;
 
-			Action::Result result{sp->action->land()}; 
-			if (result == Action::Result::Success) {
-				cout << "System " << static_cast<int>(sp->system->get_system_id()) << " landing"<< endl;
-
-				// Waiting to finish landing
-				while (sp->telemetry->armed()) {
-					cout << "System " << static_cast<int>(sp->system->get_system_id()) << " landing"<< endl;
-					std::this_thread::sleep_for(std::chrono::seconds{refresh_time});
-				}
+			Offboard::Result result{sp->offboard->set_position_ned(expected_position_yaw)}; 
+			if (result == Offboard::Result::Success) {
+				cout << "System " << static_cast<int>(sp->system->get_system_id()) << " moving"<< endl;
 			} else {
-				cerr << "Error landing system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				cerr << "Error moving system " << static_cast<int>(sp->system->get_system_id()) << endl;
 				cerr << result << endl;
 
 				mut.lock();
@@ -301,10 +301,109 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "All systems on ground" << endl;
+		cout << "All systems on offboard mode" << endl;
 	} else {
-		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
+		exit(static_cast<int>(ProRetCod::OFFBOARD_FAILURE));
 	}
+
+	// Start offboard mode
+	threads_for_waiting.clear();
+	operation_ok = true;
+	sp = system_plugins_list.begin();
+	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut, &expected_position_yaw]() {
+			Telemetry::PositionNed expected_position{expected_position_yaw.north_m, expected_position_yaw.east_m, expected_position_yaw.down_m};
+			std::mutex waiting_mutex;
+			waiting_mutex.lock();
+
+			cout << "Starting offboard mode on system " << static_cast<int>(sp->system->get_system_id()) << endl;
+
+			Offboard::Result result{sp->offboard->start()}; 
+			if (result == Offboard::Result::Success) {
+				cout << "System " << static_cast<int>(sp->system->get_system_id()) << " in offboard mode"<< endl;
+
+				Telemetry::PositionVelocityNedHandle handle {sp->telemetry->subscribe_position_velocity_ned([&waiting_mutex, &expected_position, &handle, &sp](Telemetry::PositionVelocityNed pos) {
+					cout << "Pos North: " << pos.position.north_m << endl;
+					cout << "Pos East: " << pos.position.east_m << endl;
+					cout << "Pos Down: " << pos.position.down_m << endl;
+					cout << "Vel North: " << pos.velocity.north_m_s << endl;
+					cout << "Vel East: " << pos.velocity.east_m_s << endl;
+					cout << "Vel Down: " << pos.velocity.down_m_s << endl;
+
+					if ((pos.position.down_m != expected_position.down_m) or
+						(pos.position.east_m != expected_position.east_m) or
+						(pos.position.north_m != expected_position.north_m)
+					) {
+						sp->telemetry->unsubscribe_position_velocity_ned(handle);
+						//waiting_mutex.unlock();
+						cout << "Se ha alcanzado el objetivo" << endl;
+					}
+				})};
+
+				waiting_mutex.lock();
+
+			} else {
+				cerr << "Error starting offboard mode on system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				cerr << result << endl;
+
+				mut.lock();
+				operation_ok = false;
+				mut.unlock();
+			}
+		}}));
+
+		std::advance(sp, 1);
+	}
+
+	for (shared_ptr<std::thread> th : threads_for_waiting) {
+		th->join();
+	}
+
+    if (operation_ok) {
+		cout << "All systems on offboard mode" << endl;
+	} else {
+		exit(static_cast<int>(ProRetCod::OFFBOARD_FAILURE));
+	}
+
+	// Landing
+//	threads_for_waiting.clear();
+//	operation_ok = true;
+//	sp = system_plugins_list.begin();
+//	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
+//		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
+//			cout << "Landing system " << static_cast<int>(sp->system->get_system_id()) << endl;
+//
+//			Action::Result result{sp->action->land()}; 
+//			if (result == Action::Result::Success) {
+//				cout << "System " << static_cast<int>(sp->system->get_system_id()) << " landing"<< endl;
+//
+//				// Waiting to finish landing
+//				while (sp->telemetry->armed()) {
+//					cout << "System " << static_cast<int>(sp->system->get_system_id()) << " landing"<< endl;
+//					std::this_thread::sleep_for(std::chrono::seconds{refresh_time});
+//				}
+//			} else {
+//				cerr << "Error landing system " << static_cast<int>(sp->system->get_system_id()) << endl;
+//				cerr << result << endl;
+//
+//				mut.lock();
+//				operation_ok = false;
+//				mut.unlock();
+//			}
+//		}}));
+//
+//		std::advance(sp, 1);
+//	}
+//
+//	for (shared_ptr<std::thread> th : threads_for_waiting) {
+//		th->join();
+//	}
+//
+//    if (operation_ok) {
+//		cout << "All systems on ground" << endl;
+//	} else {
+//		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
+//	}
 
 	return static_cast<int>(ProRetCod::OK);
 }
