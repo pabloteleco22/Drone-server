@@ -6,6 +6,8 @@
 #include <thread>
 #include <chrono>
 #include <future>
+#include "flag/flag.hpp"
+#include <string>
 
 using namespace mavsdk;
 using std::cout;
@@ -61,6 +63,10 @@ int main(int argc, char *argv[]) {
 
 	Mavsdk mavsdk;
 	std::mutex mut;
+
+	shared_ptr<Flag> flag{new RandomFlag{}};
+
+	cout << "The flag is in:" << endl << (std::string)(*flag) << endl;
 
 	establish_connections(argc, argv, mavsdk);
 	wait_systems(mavsdk, expected_systems);
