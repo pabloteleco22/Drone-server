@@ -34,14 +34,14 @@ enum class ProRetCod : int {
 
 // Struct to save a system and its telemetry and action objects
 struct SystemPlugins {
-	SystemPlugins(System &system) {
-		this->system = &system;
+	SystemPlugins(shared_ptr<System> system) {
+		this->system = system;
 		telemetry = std::make_shared<Telemetry>(system);
 		action = std::make_shared<Action>(system);
 		offboard = std::make_shared<Offboard>(system);
 	}
 
-	System *system;
+	shared_ptr<System> system;
 	shared_ptr<Telemetry> telemetry;
 	shared_ptr<Action> action;
 	shared_ptr<Offboard> offboard;
@@ -80,10 +80,11 @@ int main(int argc, char *argv[]) {
 	vector<SystemPlugins> system_plugins_list{};
 
 	for (shared_ptr<System> s : mavsdk.systems()) {
-		system_plugins_list.push_back(SystemPlugins(*s));
+		system_plugins_list.push_back(SystemPlugins(s));
 	}
 
 	vector<shared_ptr<std::thread>> threads_for_waiting{};
+
 
 	// Sets the position packet sending rate
 	bool operation_ok{true};
@@ -121,6 +122,7 @@ int main(int argc, char *argv[]) {
 	operation_ok = true;
 	sp = system_plugins_list.begin();
 
+	// TODO: Implements threads with barriers
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
 			mut.lock();
