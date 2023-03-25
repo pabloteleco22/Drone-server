@@ -78,5 +78,25 @@ int main() {
     stream_logger->write(error, "Error message");
     stream_logger->write(silence, "Silence message");
 
+    shared_ptr<Logger> bi_logger{make_shared<BiLogger>(new BiLogger{shared_ptr<std::ofstream>(new std::ofstream{"build/bilog_demo.log", std::ios::out})})};
+
+    bi_logger->write(info, "All levels");
+    bi_logger->write(level, "Level message");
+    bi_logger->write(debug, "Debug message");
+    bi_logger->write(info, "Info message");
+    bi_logger->write(warning, "Warning message");
+    bi_logger->write(error, "Error message");
+    bi_logger->write(silence, "Silence message");
+
+    bi_logger->write(info, "Min Warning level");
+    bi_logger->set_min_level(warning);
+
+    bi_logger->write(level, "Level message");
+    bi_logger->write(debug, "Debug message");
+    bi_logger->write(info, "Info message");
+    bi_logger->write(warning, "Warning message");
+    bi_logger->write(error, "Error message");
+    bi_logger->write(silence, "Silence message");
+
     return 0;
 }

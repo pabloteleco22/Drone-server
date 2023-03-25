@@ -13,6 +13,7 @@ struct Level {
     Level(Level *other);
     Level(shared_ptr<Level> other);
     bool operator>=(const Level &other) const;
+    bool operator>(const Level &other) const;
     string get_color() const;
     string get_level_name() const;
     bool is_printable() const;
@@ -26,6 +27,8 @@ struct Level {
 
 struct Debug : public Level {
     using Level::Level;
+    using Level::operator>=;
+    using Level::operator>;
     Debug() {
         level_number = 51;
         color = "\033[34m";
@@ -36,6 +39,8 @@ struct Debug : public Level {
 
 struct Info : public Level {
     using Level::Level;
+    using Level::operator>=;
+    using Level::operator>;
     Info() {
         level_number = 102;
         color = "\033[32m";
@@ -46,6 +51,8 @@ struct Info : public Level {
 
 struct Warning : public Level {
     using Level::Level;
+    using Level::operator>=;
+    using Level::operator>;
     Warning() {
         level_number = 153;
         color = "\033[33m";
@@ -56,6 +63,8 @@ struct Warning : public Level {
 
 struct Error : public Level {
     using Level::Level;
+    using Level::operator>=;
+    using Level::operator>;
     Error() {
         level_number = 204;
         color = "\033[31m";
@@ -66,6 +75,8 @@ struct Error : public Level {
 
 struct Silence : public Level {
     using Level::Level;
+    using Level::operator>=;
+    using Level::operator>;
     Silence() {
         level_number = 255;
         level_name = "Silence";
@@ -77,11 +88,11 @@ struct Logger {
     Logger(Logger *other);
     Logger(shared_ptr<Logger> other);
     virtual void write(shared_ptr<Level> level, const string &message) = 0;
-    void set_min_level(shared_ptr<Level> level);
+    virtual void set_min_level(shared_ptr<Level> level);
 
     protected:
         shared_ptr<Level> min_level;
-        double get_timestamp();
+        virtual double get_timestamp();
         shared_ptr<std::ostream> stream;
 
     private:
@@ -92,14 +103,24 @@ struct StandardLogger : public Logger {
     StandardLogger();
     StandardLogger(Logger *other) : Logger(other) {};
     StandardLogger(shared_ptr<Logger> other) : Logger(other) {};
-    void write(shared_ptr<Level> level, const string &message) override;
+    virtual void write(shared_ptr<Level> level, const string &message) override;
 };
 
 struct StreamLogger : public Logger {
     StreamLogger(shared_ptr<std::ostream> stream);
     StreamLogger(Logger *other) : Logger(other) {};
     StreamLogger(shared_ptr<Logger> other) : Logger(other) {};
-    void write(shared_ptr<Level> level, const string &message) override;
+    virtual void write(shared_ptr<Level> level, const string &message) override;
+};
 
-    private:
+struct BiLogger : public Logger {
+    BiLogger(shared_ptr<std::ostream> stream);
+    BiLogger(Logger *other) : Logger(other) {};
+    BiLogger(shared_ptr<Logger> other) : Logger(other) {};
+    virtual void write(shared_ptr<Level> level, const string &message) override;
+    virtual void set_min_level(shared_ptr<Level> level) override;
+
+    protected:
+        StandardLogger std_logger;
+        StreamLogger stream_logger{stream};
 };

@@ -54,6 +54,17 @@ target_link_libraries(flag_test
 )
 
 ##------------------ Log test ------------------##
+add_executable(log_test
+    test/log_test.cpp
+)
+
+target_link_libraries(log_test
+    GTest::gtest_main
+    GTest::gmock
+    Log
+)
+
+##------------------ Log demo ------------------##
 add_executable(log_demo
     test/log_demo.cpp
 )
@@ -64,3 +75,4 @@ target_link_libraries(log_demo
 
 include(GoogleTest)
 gtest_discover_tests(flag_test)
+gtest_discover_tests(log_test)

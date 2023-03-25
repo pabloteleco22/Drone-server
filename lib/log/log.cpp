@@ -24,6 +24,10 @@ bool Level::operator>=(const Level &other) const {
     return level_number >= other.level_number;
 }
 
+bool Level::operator>(const Level &other) const {
+    return level_number > other.level_number;
+}
+
 string Level::get_color() const {
     return color;
 }
@@ -85,4 +89,18 @@ void StreamLogger::write(std::shared_ptr<Level> level, const string &message) {
             << get_timestamp()
             << " | " << level->get_level_name() << "] " << message << endl;
     }
+}
+
+BiLogger::BiLogger(shared_ptr<std::ostream> stream) {
+    this->stream = stream;
+}
+
+void BiLogger::write(std::shared_ptr<Level> level, const string &message) {
+    std_logger.write(level, message);
+    stream_logger.write(level, message);
+}
+
+void BiLogger::set_min_level(shared_ptr<Level> level) {
+    std_logger.set_min_level(level);
+    stream_logger.set_min_level(level);
 }
