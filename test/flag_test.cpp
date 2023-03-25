@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include "gmock/gmock.h"
-#include "../flag/flag.hpp"
+#include "../lib/flag/flag.hpp"
 #include <typeinfo>
 
 using testing::MatchesRegex;

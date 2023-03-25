@@ -6,8 +6,9 @@
 #include <thread>
 #include <chrono>
 #include <future>
-#include "flag/flag.hpp"
+#include "lib/flag/flag.hpp"
 #include <string>
+#include "lib/log/log.hpp"
 
 using namespace mavsdk;
 using std::cout;

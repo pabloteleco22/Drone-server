@@ -11,7 +11,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_definitions("-Wall -Wextra -Werror")
 #add_definitions("-Wall -Wextra")
 
-add_subdirectory(flag)
+add_subdirectory(lib/flag)
+add_subdirectory(lib/log)
 
 # Finds MAVSDK when installed system wide.
 find_package(MAVSDK REQUIRED)
@@ -25,8 +26,10 @@ add_executable(drone_server
 target_link_libraries(drone_server
     MAVSDK::mavsdk             #All apps link against mavsdk library
     Flag
+    Log
 )
 
+#------------------- TEST -------------------#
 include(FetchContent)
 FetchContent_Declare(
     googletest
@@ -38,6 +41,7 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
+##------------------ Flag test ------------------##
 add_executable(flag_test
     test/flag_test.cpp
 )
@@ -45,8 +49,17 @@ add_executable(flag_test
 target_link_libraries(flag_test
     GTest::gtest_main
     GTest::gmock
-    MAVSDK::mavsdk             #All apps link against mavsdk library
     Flag
+    MAVSDK::mavsdk             #All apps link against mavsdk library
+)
+
+##------------------ Log test ------------------##
+add_executable(log_test
+    test/log_test.cpp
+)
+
+target_link_libraries(log_test
+    Log
 )
 
 include(GoogleTest)
