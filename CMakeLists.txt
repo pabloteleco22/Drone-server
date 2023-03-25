@@ -54,11 +54,11 @@ target_link_libraries(flag_test
 )
 
 ##------------------ Log test ------------------##
-add_executable(log_test
-    test/log_test.cpp
+add_executable(log_demo
+    test/log_demo.cpp
 )
 
-target_link_libraries(log_test
+target_link_libraries(log_demo
     Log
 )
 

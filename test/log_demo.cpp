@@ -58,10 +58,9 @@ int main() {
     standard_stream_logger->write(error, "Error message");
     standard_stream_logger->write(silence, "Silence message");
 
-    shared_ptr<Logger> stream_logger{make_shared<StreamLogger>(new StreamLogger{shared_ptr<std::ofstream>(new std::ofstream{"log_demo.log", std::ios::out})})};
+    shared_ptr<Logger> stream_logger{make_shared<StreamLogger>(new StreamLogger{shared_ptr<std::ofstream>(new std::ofstream{"build/log_demo.log", std::ios::out})})};
 
-    cout << endl << "Stream logger" << endl;
-    cout << "All levels" << endl;
+    stream_logger->write(info, "All levels");
     stream_logger->write(level, "Level message");
     stream_logger->write(debug, "Debug message");
     stream_logger->write(info, "Info message");
