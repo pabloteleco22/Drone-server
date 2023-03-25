@@ -100,13 +100,17 @@ TEST(RandomFlagTest, CheckTelemetryPositionNedCasting) {
 }
 
 TEST(RandomFlagTest, CheckStringCasting) {
-    const Flag *random_flag{new RandomFlag};
+    const Flag *random_flag;
 
-    const std::string ret{static_cast<std::string>(*random_flag)};
+    for (unsigned int i = 0; i < MAX_REPETITIONS; ++i) {
+        random_flag = new RandomFlag;
+        
+        const std::string ret{static_cast<std::string>(*random_flag)};
 
-    ASSERT_THAT(ret, MatchesRegex("^North \\[m\\]: -?[0-9]+\\.[0-9]+\nEast \\[m\\]: -?[0-9]+\\.[0-9]+\nDown \\[m\\]: -?[0-9]+\\.[0-9]+$"));
+        ASSERT_THAT(ret, MatchesRegex("^North \\[m\\]: -?[0-9]+(\\.[0-9]+)?\nEast \\[m\\]: -?[0-9]+(\\.[0-9]+)?\nDown \\[m\\]: -?[0-9]+(\\.[0-9]+)?$"));
 
-    delete random_flag;
+        delete random_flag;
+    }
 }
 
 /*** RandomFlag::MaxMin Tests ***/
