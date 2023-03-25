@@ -44,11 +44,13 @@ Logger::Logger() {
 Logger::Logger(Logger *other) {
     min_level = other->min_level;
     start_time = other->start_time;
+    stream = other->stream;
 }
 
 Logger::Logger(shared_ptr<Logger> other) {
     min_level = other->min_level;
     start_time = other->start_time;
+    stream = other->stream;
 }
 
 void Logger::set_min_level(std::shared_ptr<Level> level) {
@@ -59,11 +61,28 @@ double Logger::get_timestamp() {
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start_time).count();
 }
 
+StandardLogger::StandardLogger() {
+    stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
+}
+
 void StandardLogger::write(std::shared_ptr<Level> level, const string &message) {
     if ((*level >= *min_level) and (level->is_printable())) {
 
-        cout << level->get_color() << "["
+        (*stream) << level->get_color() << "["
             << get_timestamp()
             << " | " << level->get_level_name() << "]\033[0m " << message << endl;
+    }
+}
+
+StreamLogger::StreamLogger(shared_ptr<std::ostream> stream) {
+    this->stream = stream;
+}
+
+void StreamLogger::write(std::shared_ptr<Level> level, const string &message) {
+    if ((*level >= *min_level) and (level->is_printable())) {
+
+        (*stream) << "["
+            << get_timestamp()
+            << " | " << level->get_level_name() << "] " << message << endl;
     }
 }

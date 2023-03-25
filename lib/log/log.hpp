@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <chrono>
+#include <ostream>
 
 using std::string;
 using std::shared_ptr;
@@ -81,12 +82,24 @@ struct Logger {
     protected:
         shared_ptr<Level> min_level;
         double get_timestamp();
+        shared_ptr<std::ostream> stream;
 
     private:
         std::chrono::time_point<std::chrono::steady_clock> start_time;
 };
 
 struct StandardLogger : public Logger {
-    using Logger::Logger;
+    StandardLogger();
+    StandardLogger(Logger *other) : Logger(other) {};
+    StandardLogger(shared_ptr<Logger> other) : Logger(other) {};
     void write(shared_ptr<Level> level, const string &message) override;
+};
+
+struct StreamLogger : public Logger {
+    StreamLogger(shared_ptr<std::ostream> stream);
+    StreamLogger(Logger *other) : Logger(other) {};
+    StreamLogger(shared_ptr<Logger> other) : Logger(other) {};
+    void write(shared_ptr<Level> level, const string &message) override;
+
+    private:
 };
