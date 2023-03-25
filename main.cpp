@@ -2,18 +2,15 @@
 #include <mavsdk/plugins/action/action.h>
 #include <mavsdk/plugins/telemetry/telemetry.h>
 #include <mavsdk/plugins/offboard/offboard.h>
-#include <iostream>
 #include <thread>
 #include <chrono>
 #include <future>
 #include "lib/flag/flag.hpp"
 #include <string>
+#include <sstream>
 #include "lib/log/log.hpp"
 
 using namespace mavsdk;
-using std::cout;
-using std::cerr;
-using std::endl;
 using std::vector;
 using std::shared_ptr;
 
@@ -52,9 +49,13 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
 bool check_operation_ok(bool &operation_ok, std::mutex &mut);
 
+shared_ptr<Logger> logger{new StandardLogger};
+shared_ptr<Level> info{new Info};
+shared_ptr<Level> error{new Error};
+
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
-		cerr << "Use: " << "<port1> <port2> ..." << endl;
+		logger->write(error, "Use: " + string(argv[0]) + " <port1> <port2> ...");
 
 		exit(static_cast<int>(ProRetCod::BAD_ARGUMENT));
 	}
@@ -67,15 +68,15 @@ int main(int argc, char *argv[]) {
 
 	shared_ptr<Flag> flag{new RandomFlag{}};
 
-	cout << "The flag is in:" << endl << (std::string)(*flag) << endl;
+	logger->write(info, "The flag is in:\n" + static_cast<string>(*flag));
 
 	establish_connections(argc, argv, mavsdk);
 	wait_systems(mavsdk, expected_systems);
 
 	for (shared_ptr<System> s : mavsdk.systems()) {
-		cout << "System: " << static_cast<int>(s->get_system_id()) << endl;
-		cout << "    Is connected: " << std::boolalpha << s->is_connected() << endl;
-		cout << "    Has autopilot: " << std::boolalpha << s->has_autopilot() << endl;
+		logger->write(info, "System: " + std::to_string(static_cast<int>(s->get_system_id())));
+		logger->write(info, "    Is connected: " + string((s->is_connected()) ? "true" : "false"));
+		logger->write(info, "    Has autopilot: " + string((s->has_autopilot()) ? "true" : "false"));
 	}
 
 	vector<SystemPlugins> system_plugins_list{};
@@ -92,13 +93,15 @@ int main(int argc, char *argv[]) {
 	vector<SystemPlugins>::iterator sp{system_plugins_list.begin()};
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
-			cout << "Setting rate in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+			logger->write(info, "Setting rate in system " + std::to_string(static_cast<int>(sp->system->get_system_id())));
 
 			Telemetry::Result result{sp->telemetry->set_rate_position_velocity_ned(1.0)};
 			if (result == Telemetry::Result::Success) {
-				cout << "Correctly set rate in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				logger->write(info, "Correctly set rate in system " + std::to_string(static_cast<int>(sp->system->get_system_id())));
 			} else {
-				cerr << "Failure to set rate in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				std::ostringstream os;
+				os << result;
+				logger->write(error, "Failure to set rate in system " + std::to_string(static_cast<int>(sp->system->get_system_id())) + ": " + os.str());
 				mut.lock();
 				operation_ok = false;
 				mut.unlock();
@@ -113,7 +116,7 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "All rates defined" << endl;
+		logger->write(info, "All rates defined");
 	} else {
 		exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
 	}
@@ -127,29 +130,30 @@ int main(int argc, char *argv[]) {
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
 			mut.lock();
-			cout << "Checking system " << static_cast<int>(sp->system->get_system_id()) << endl;
+			logger->write(info, "Checking system " + std::to_string(static_cast<int>(sp->system->get_system_id())));
 			mut.unlock();
 
 			bool all_ok{sp->telemetry->health_all_ok()}; 
 			if (all_ok) {
 				mut.lock();
-				cout << "All ok in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				logger->write(info, "All OK in system " + std::to_string(static_cast<int>(sp->system->get_system_id())));
 				mut.unlock();
 			} else {
 				mut.lock();
-				cerr << "Not all ok in system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				logger->write(error, "Not all OK in system " + std::to_string(static_cast<int>(sp->system->get_system_id())));
 				mut.unlock();
 				Telemetry::Health health{sp->telemetry->health()};
 
 				mut.lock();
-				cerr << "System " << static_cast<int>(sp->system->get_system_id()) << endl;
-				cout << "is accelerometer calibration ok: " << std::boolalpha << health.is_accelerometer_calibration_ok << endl;
-				cout << "is armable: " << std::boolalpha << health.is_armable << endl;
-				cout << "is global position ok: " << std::boolalpha << health.is_global_position_ok << endl;
-				cout << "is gyrometer calibration ok: " << std::boolalpha << health.is_gyrometer_calibration_ok << endl;
-				cout << "is home position ok: " << std::boolalpha << health.is_home_position_ok << endl;
-				cout << "is local position ok: " << std::boolalpha << health.is_local_position_ok << endl;
-				cout << "is magnetometer calibration ok: " << std::boolalpha << health.is_magnetometer_calibration_ok << endl;
+				logger->write(error, "System " + std::to_string(static_cast<int>(sp->system->get_system_id())) + "\n" +
+					"    is accelerometer calibration OK: " + string(health.is_accelerometer_calibration_ok ? "true" : "false") + "\n" +
+					"    is armable: " + string(health.is_armable ? "true" : "false") + "\n" +
+					"    is global position OK: " + string(health.is_global_position_ok ? "true" : "false") + "\n" +
+					"    is gyrometer calibration OK: " + string(health.is_gyrometer_calibration_ok ? "true" : "false") + "\n" +
+					"    is home position OK: " + string(health.is_home_position_ok ? "true" : "false") + "\n" +
+					"    is local position OK: " + string(health.is_local_position_ok ? "true" : "false") + "\n" +
+					"    is magnetometer calibration OK: " + string(health.is_magnetometer_calibration_ok ? "true" : "false")
+				);
 
 				operation_ok = false;
 				mut.unlock();
@@ -164,7 +168,7 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "All systems ok" << endl;
+		logger->write(info, "All systems OK");
 	} else {
 		exit(static_cast<int>(ProRetCod::TELEMETRY_FAILURE));
 	}
@@ -175,14 +179,15 @@ int main(int argc, char *argv[]) {
 	sp = system_plugins_list.begin();
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
-			cout << "Setting takeoff altitude of system " << static_cast<int>(sp->system->get_system_id()) << endl;
+			logger->write(info, "Setting takeoff altitude of system " + std::to_string(static_cast<int>(sp->system->get_system_id())));
 
 			Action::Result result{sp->action->set_takeoff_altitude(takeoff_altitude)}; 
 			if (result == Action::Result::Success) {
-				cout << "Takeoff altitude set on system " << static_cast<int>(sp->system->get_system_id()) << endl;
+				logger->write(info, "Takeoff altitude set on system " + std::to_string(static_cast<int>(sp->system->get_system_id())));
 			} else {
-				cerr << "Error setting takeoff altitude on system " << static_cast<int>(sp->system->get_system_id()) << endl;
-				cerr << result << endl;
+				std::ostringstream os;
+				os << result;
+				logger->write(error, "Error setting takeoff altitude on system " + std::to_string(static_cast<int>(sp->system->get_system_id())) + ": " + os.str());
 
 				mut.lock();
 				operation_ok = false;
@@ -198,7 +203,7 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "Takeoff altitude of all systems set" << endl;
+		logger->write(info, "Takeoff altitude of all systems set");
 	} else {
 		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
 	}
@@ -209,14 +214,15 @@ int main(int argc, char *argv[]) {
 	sp = system_plugins_list.begin();
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
-			cout << "Arming system " << static_cast<int>(sp->system->get_system_id()) << endl;
+			logger->write(info, "Arming system " + std::to_string(static_cast<int>(sp->system->get_system_id())));
 
 			Action::Result result{sp->action->arm()}; 
 			if (result == Action::Result::Success) {
-				cout << "System armed " << static_cast<int>(sp->system->get_system_id()) << endl;
+				logger->write(info, "System " + std::to_string(static_cast<int>(sp->system->get_system_id())) + " armed");
 			} else {
-				cerr << "Error arming system " << static_cast<int>(sp->system->get_system_id()) << endl;
-				cerr << result << endl;
+				std::ostringstream os;
+				os << result;
+				logger->write(error, "Error arming system " + std::to_string(static_cast<int>(sp->system->get_system_id())) + ": " + os.str());
 
 				mut.lock();
 				operation_ok = false;
@@ -232,7 +238,7 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "All armed" << endl;
+		logger->write(info, "All systems armed");
 	} else {
 		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
 	}
@@ -243,23 +249,24 @@ int main(int argc, char *argv[]) {
 	sp = system_plugins_list.begin();
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
-			cout << "Taking off system " << static_cast<int>(sp->system->get_system_id()) << endl;
+			logger->write(info, "Taking off system " + std::to_string(static_cast<int>(sp->system->get_system_id())));
 
 			Action::Result result{sp->action->takeoff()}; 
 			if (result == Action::Result::Success) {
-				cout << "System " << static_cast<int>(sp->system->get_system_id()) << " taking off" << endl;
+				logger->write(info, "System " + std::to_string(static_cast<int>(sp->system->get_system_id())) + " taking off");
 
 				// Waiting to finish takeoff
 				float current_altitude{sp->telemetry->position().relative_altitude_m};
-				cout << "Altitud sistema " << static_cast<int>(sp->system->get_system_id()) << ": " << current_altitude << endl;
+				logger->write(info, "System altitude " + std::to_string(static_cast<int>(sp->system->get_system_id())) + ": " + std::to_string(current_altitude));
 				while ((std::isnan(current_altitude)) or (current_altitude < takeoff_altitude)) {
-					cout << "System " << static_cast<int>(sp->system->get_system_id()) << " taking off" << endl;
+					logger->write(info, "System " + std::to_string(static_cast<int>(sp->system->get_system_id())) + " taking off");
 					std::this_thread::sleep_for(std::chrono::seconds{refresh_time});
 					current_altitude = sp->telemetry->position().relative_altitude_m;
 				}
 			} else {
-				cerr << "Error taking off system " << static_cast<int>(sp->system->get_system_id()) << endl;
-				cerr << result << endl;
+				std::ostringstream os;
+				os << result;
+				logger->write(error, "Error taking off system " + std::to_string(static_cast<int>(sp->system->get_system_id())) + ": " + os.str());
 
 				mut.lock();
 				operation_ok = false;
@@ -275,7 +282,7 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "All systems on air" << endl;
+		logger->write(info, "All systems on air");
 	} else {
 		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
 	}
@@ -287,14 +294,15 @@ int main(int argc, char *argv[]) {
 	Offboard::PositionNedYaw expected_position_yaw{10.0f, 0.0f, -10.0f, 0.0f};
 	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut, &expected_position_yaw]() {
-			cout << "System " << static_cast<int>(sp->system->get_system_id()) << " go 10 meters forward" << endl;
+			logger->write(info, "Setting setpoint on system " + std::to_string(static_cast<int>(sp->system->get_system_id())));
 
 			Offboard::Result result{sp->offboard->set_position_ned(expected_position_yaw)}; 
 			if (result == Offboard::Result::Success) {
-				cout << "System " << static_cast<int>(sp->system->get_system_id()) << " moving"<< endl;
+				logger->write(info, "Setpoint of system " + std::to_string(static_cast<int>(sp->system->get_system_id())) + " set");
 			} else {
-				cerr << "Error moving system " << static_cast<int>(sp->system->get_system_id()) << endl;
-				cerr << result << endl;
+				std::ostringstream os;
+				os << result;
+				logger->write(error, "Error setting setpoint on system " + std::to_string(static_cast<int>(sp->system->get_system_id())) + ": " + os.str());
 
 				mut.lock();
 				operation_ok = false;
@@ -310,7 +318,7 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "All systems on offboard mode" << endl;
+		logger->write(info, "All setpoints set");
 	} else {
 		exit(static_cast<int>(ProRetCod::OFFBOARD_FAILURE));
 	}
@@ -325,35 +333,37 @@ int main(int argc, char *argv[]) {
 			std::mutex waiting_mutex;
 			waiting_mutex.lock();
 
-			cout << "Starting offboard mode on system " << static_cast<int>(sp->system->get_system_id()) << endl;
+			logger->write(info, "Starting offboard mode on system " + std::to_string(static_cast<int>(sp->system->get_system_id())));
 
 			Offboard::Result result{sp->offboard->start()}; 
 			if (result == Offboard::Result::Success) {
-				cout << "System " << static_cast<int>(sp->system->get_system_id()) << " in offboard mode"<< endl;
+				logger->write(info, "System " + std::to_string(static_cast<int>(sp->system->get_system_id())) + " in offboard mode");
 
 				Telemetry::PositionVelocityNedHandle handle {sp->telemetry->subscribe_position_velocity_ned([&waiting_mutex, &expected_position, &handle, &sp](Telemetry::PositionVelocityNed pos) {
-					cout << "Pos North: " << pos.position.north_m << endl;
-					cout << "Pos East: " << pos.position.east_m << endl;
-					cout << "Pos Down: " << pos.position.down_m << endl;
-					cout << "Vel North: " << pos.velocity.north_m_s << endl;
-					cout << "Vel East: " << pos.velocity.east_m_s << endl;
-					cout << "Vel Down: " << pos.velocity.down_m_s << endl;
+					logger->write(info, "System " + std::to_string(static_cast<int>(sp->system->get_system_id())) + " position & velocity:\n" +
+						"Pos North: " + std::to_string(pos.position.north_m) + "\n" +
+						"Pos East: " + std::to_string(pos.position.east_m) + "\n" +
+						"Pos Down: " + std::to_string(pos.position.down_m) + "\n" +
+						"Vel North: " + std::to_string(pos.velocity.north_m_s) + "\n" +
+						"Vel East: " + std::to_string(pos.velocity.east_m_s) + "\n" +
+						"Vel Down: " + std::to_string(pos.velocity.down_m_s) + "\n"
+					);
 
-					if ((pos.position.down_m != expected_position.down_m) or
-						(pos.position.east_m != expected_position.east_m) or
+					if ((pos.position.down_m != expected_position.down_m) or (pos.position.east_m != expected_position.east_m) or
 						(pos.position.north_m != expected_position.north_m)
 					) {
 						sp->telemetry->unsubscribe_position_velocity_ned(handle);
+						logger->write(info, "System " + std::to_string(static_cast<int>(sp->system->get_system_id())) + " has reached the target");
 						//waiting_mutex.unlock();
-						cout << "Se ha alcanzado el objetivo" << endl;
 					}
 				})};
 
 				waiting_mutex.lock();
 
 			} else {
-				cerr << "Error starting offboard mode on system " << static_cast<int>(sp->system->get_system_id()) << endl;
-				cerr << result << endl;
+				std::ostringstream os;
+				os << result;
+				logger->write(error, "Error starting offboard mode on system " + std::to_string(static_cast<int>(sp->system->get_system_id())) + ": " + os.str());
 
 				mut.lock();
 				operation_ok = false;
@@ -369,7 +379,7 @@ int main(int argc, char *argv[]) {
 	}
 
     if (operation_ok) {
-		cout << "All systems on offboard mode" << endl;
+		logger->write(error, "All systems on offboard mode");
 	} else {
 		exit(static_cast<int>(ProRetCod::OFFBOARD_FAILURE));
 	}
@@ -425,13 +435,15 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 		url_list.push_back("udp://:" + std::string {argv[i]});
 	}
 
-	cout << "Establishing connection..." << endl;
+	logger->write(info, "Establishing connection...");
 	for (std::string url : url_list) {
 		ConnectionResult connection_result{mavsdk.add_any_connection(url)};
 		if (connection_result == ConnectionResult::Success) {
-			cout << "Connection established on " << url << endl;
+			logger->write(info, "Connection established on " + url);
 		} else {
-			cerr << "Connection failed on " << url << ": " << connection_result << endl;
+			std::ostringstream os;
+			os << connection_result;
+			logger->write(error, "Connection failed on " + url + ": " + os.str());
 
 			exit(static_cast<int>(ProRetCod::CONNECTION_FAILED));
 		}
@@ -450,8 +462,8 @@ void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syste
 		vector<System>::size_type remaining_systems {expected_systems - discovered_systems};
 
 		shared_ptr<System> s {mavsdk.systems().back()};
-		cout << "Systems found: " << discovered_systems << endl;
-		cout << "Remaining systems: " << remaining_systems << endl;
+		logger->write(info, "Systems found: " + std::to_string(discovered_systems));
+		logger->write(info, "Remaining systems: " + std::to_string(remaining_systems));
 
 		++times_executed;
 
@@ -462,10 +474,10 @@ void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syste
 	});
 	
 	if (fut.wait_for(max_waiting_time) != std::future_status::ready) {
-		cout << "Not all systems found" << endl;
+		logger->write(error, "Not all systems found");
 		exit(static_cast<int>(ProRetCod::NO_SYSTEMS_FOUND));
 	} else {
-		cout << "Systems search completed" << endl;
+		logger->write(info, "Systems search completed");
 	}
 }
 
