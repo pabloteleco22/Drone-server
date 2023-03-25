@@ -5,48 +5,57 @@
 #include <memory>
 
 using std::string;
+using std::shared_ptr;
 
-struct Logger {
-    struct Level {
-        bool operator>=(const Level &other) const;
-        string get_color();
-
-        protected:
-            unsigned short level_number{0};
-            string color{"\033[34m"};
-    };
-
-    Logger();
-    virtual void write(Level *level, const string &message) = 0;
-    void set_min_level(Level *level);
+struct Level {
+    Level();
+    Level(Level *other);
+    Level(shared_ptr<Level> other);
+    bool operator>=(const Level &other) const;
+    string get_color();
 
     protected:
-        Level *min_level;
+        unsigned short level_number{0};
+        string color{"\033[0m"};
+};
+
+struct Debug : public Level {
+    using Level::Level;
+    Debug() { color = "\033[34m"; level_number = 51; }
+};
+
+struct Info : public Level {
+    using Level::Level;
+    Info() { color = "\033[32m"; level_number = 102; }
+};
+
+struct Warning : public Level {
+    using Level::Level;
+    Warning() { color = "\033[33m"; level_number = 153; }
+};
+
+struct Error : public Level {
+    using Level::Level;
+    Error() { color = "\033[31m"; level_number = 204; }
+};
+
+struct Silence : public Level {
+    using Level::Level;
+    Silence() { color = "\033[8m"; level_number = 255; }
+};
+
+struct Logger {
+    Logger();
+    Logger(Logger *other);
+    Logger(shared_ptr<Logger> other);
+    virtual void write(shared_ptr<Level> level, const string &message) = 0;
+    void set_min_level(shared_ptr<Level> level);
+
+    protected:
+        shared_ptr<Level> min_level;
 };
 
 struct StandardLogger : public Logger {
-    void write(Level *level, const string &message) override;
-};
-
-struct Debug : public Logger::Level {
-};
-
-struct Info : public Logger::Level {
-    unsigned short level_number{1};
-    Info() { color = "\033[32m"; }
-};
-
-struct Warning : public Logger::Level {
-    unsigned short level_number{2};
-    Warning() { color = "\033[33m"; }
-};
-
-struct Error : public Logger::Level {
-    unsigned short level_number{3};
-    Error() { color = "\033[31m"; }
-};
-
-struct Silence : public Logger::Level {
-    unsigned short level_number{4};
-    Silence() { color = "\033[8m"; }
+    using Logger::Logger;
+    void write(shared_ptr<Level> level, const string &message) override;
 };

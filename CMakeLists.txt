@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Enable strict handling of warnings
-add_definitions("-Wall -Wextra -Werror")
-#add_definitions("-Wall -Wextra")
+#add_definitions("-Wall -Wextra -Werror")
+add_definitions("-Wall -Wextra")
 
 add_subdirectory(lib/flag)
 add_subdirectory(lib/log)

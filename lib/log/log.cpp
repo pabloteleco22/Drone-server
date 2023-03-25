@@ -4,24 +4,44 @@
 using std::cout;
 using std::endl;
 
-Logger::Logger() {
-    min_level = new Debug;
+Level::Level() {}
+
+Level::Level(Level *other) {
+    level_number = other->level_number;
+    color = other->color;
 }
 
-bool Logger::Level::operator>=(const Level &other) const {
+Level::Level(std::shared_ptr<Level> other) {
+    level_number = other->level_number;
+    color = other->level_number;
+};
+
+bool Level::operator>=(const Level &other) const {
     return level_number >= other.level_number;
 }
 
-string Logger::Level::get_color() {
+string Level::get_color() {
     return color;
 }
 
-void Logger::set_min_level(Level *level) {
+Logger::Logger() {
+    min_level = std::make_shared<Level>(new Level);
+}
+
+Logger::Logger(Logger *other) {
+    min_level = other->min_level;
+}
+
+Logger::Logger(shared_ptr<Logger> other) {
+    min_level = other->min_level;
+}
+
+void Logger::set_min_level(std::shared_ptr<Level> level) {
     min_level = level;
 }
 
-void StandardLogger::write(Level *level, const string &message) {
-    if (*min_level >= *level) {
-        cout << level->get_color() << message << endl;
+void StandardLogger::write(std::shared_ptr<Level> level, const string &message) {
+    if (*level >= *min_level) {
+        cout << level->get_color() << message << "\033[0m" << endl;
     }
 }
