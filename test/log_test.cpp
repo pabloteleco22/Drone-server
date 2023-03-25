@@ -19,22 +19,22 @@ int main() {
     shared_ptr<Level> silence{make_shared<Silence>(new Silence)};
 
     cout << "All levels" << endl;
-    logger->write(level, "Level");
-    logger->write(debug, "Debug");
-    logger->write(info, "Info");
-    logger->write(warning, "Warning");
-    logger->write(error, "Error");
-    logger->write(silence, "Silence");
+    logger->write(level, "Level message");
+    logger->write(debug, "Debug message");
+    logger->write(info, "Info message");
+    logger->write(warning, "Warning message");
+    logger->write(error, "Error message");
+    logger->write(silence, "Silence message");
 
-    cout << "Min Warning level" << endl;
+    cout << endl << "Min Warning level" << endl;
     logger->set_min_level(warning);
 
-    logger->write(level, "Level");
-    logger->write(debug, "Debug");
-    logger->write(info, "Info");
-    logger->write(warning, "Warning");
-    logger->write(error, "Error");
-    logger->write(silence, "Silence");
+    logger->write(level, "Level message");
+    logger->write(debug, "Debug message");
+    logger->write(info, "Info message");
+    logger->write(warning, "Warning message");
+    logger->write(error, "Error message");
+    logger->write(silence, "Silence message");
 
    return 0;
 }

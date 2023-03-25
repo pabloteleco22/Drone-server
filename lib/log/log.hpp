@@ -1,8 +1,8 @@
 #pragma once
 
 #include <string>
-#include <array>
 #include <memory>
+#include <chrono>
 
 using std::string;
 using std::shared_ptr;
@@ -12,36 +12,63 @@ struct Level {
     Level(Level *other);
     Level(shared_ptr<Level> other);
     bool operator>=(const Level &other) const;
-    string get_color();
+    string get_color() const;
+    string get_level_name() const;
+    bool is_printable() const;
 
     protected:
         unsigned short level_number{0};
         string color{"\033[0m"};
+        string level_name{"Level"};
+        bool printable{false};
 };
 
 struct Debug : public Level {
     using Level::Level;
-    Debug() { color = "\033[34m"; level_number = 51; }
+    Debug() {
+        level_number = 51;
+        color = "\033[34m";
+        level_name = "Debug";
+        printable = true;
+    }
 };
 
 struct Info : public Level {
     using Level::Level;
-    Info() { color = "\033[32m"; level_number = 102; }
+    Info() {
+        level_number = 102;
+        color = "\033[32m";
+        level_name = "Info";
+        printable = true;
+    }
 };
 
 struct Warning : public Level {
     using Level::Level;
-    Warning() { color = "\033[33m"; level_number = 153; }
+    Warning() {
+        level_number = 153;
+        color = "\033[33m";
+        level_name = "Warning";
+        printable = true;
+    }
 };
 
 struct Error : public Level {
     using Level::Level;
-    Error() { color = "\033[31m"; level_number = 204; }
+    Error() {
+        level_number = 204;
+        color = "\033[31m";
+        level_name = "Error";
+        printable = true;
+    }
 };
 
 struct Silence : public Level {
     using Level::Level;
-    Silence() { color = "\033[8m"; level_number = 255; }
+    Silence() {
+        level_number = 255;
+        level_name = "Silence";
+    }
 };
 
 struct Logger {
@@ -53,6 +80,10 @@ struct Logger {
 
     protected:
         shared_ptr<Level> min_level;
+        double get_timestamp();
+
+    private:
+        std::chrono::time_point<std::chrono::steady_clock> start_time;
 };
 
 struct StandardLogger : public Logger {
