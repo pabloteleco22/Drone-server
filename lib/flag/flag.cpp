@@ -13,15 +13,15 @@ RandomFlag::MaxMin::MaxMin(int n1, int n2) {
     }
 }
 
-int RandomFlag::MaxMin::get_max() {
+int RandomFlag::MaxMin::get_max() const {
     return this->max;
 }
 
-int RandomFlag::MaxMin::get_min() {
+int RandomFlag::MaxMin::get_min() const {
     return this->min;
 }
 
-int RandomFlag::MaxMin::get_interval() {
+int RandomFlag::MaxMin::get_interval() const {
     return this->max - this->min;
 }
 

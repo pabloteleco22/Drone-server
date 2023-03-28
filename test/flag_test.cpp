@@ -56,12 +56,12 @@ TEST(RandomFlagTest, CheckDefaultPosition) {
         random_flag = new RandomFlag;
         const Telemetry::PositionNed position{random_flag->get_flag_position()};
 
-        ASSERT_LE(position.north_m, RandomFlag::default_north_m_max);
-        ASSERT_GE(position.north_m, RandomFlag::default_north_m_min);
-        ASSERT_LE(position.east_m, RandomFlag::default_east_m_max);
-        ASSERT_GE(position.east_m, RandomFlag::default_east_m_min);
-        ASSERT_LE(position.down_m, RandomFlag::default_down_m_max);
-        ASSERT_GE(position.down_m, RandomFlag::default_down_m_min);
+        ASSERT_LE(position.north_m, RandomFlag::default_north_m.get_max());
+        ASSERT_GE(position.north_m, RandomFlag::default_north_m.get_min());
+        ASSERT_LE(position.east_m, RandomFlag::default_east_m.get_max());
+        ASSERT_GE(position.east_m, RandomFlag::default_east_m.get_min());
+        ASSERT_LE(position.down_m, RandomFlag::default_down_m.get_max());
+        ASSERT_GE(position.down_m, RandomFlag::default_down_m.get_min());
 
         delete random_flag;
     }
