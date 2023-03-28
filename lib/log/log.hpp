@@ -32,7 +32,7 @@ struct Debug : public Level {
     using Level::operator>;
     Debug() {
         level_number = 51;
-        color = "\033[34m";
+        color = "\033[1;32m";
         level_name = "Debug";
         printable = true;
     }
@@ -44,7 +44,7 @@ struct Info : public Level {
     using Level::operator>;
     Info() {
         level_number = 102;
-        color = "\033[32m";
+        color = "\033[1;34m";
         level_name = "Info";
         printable = true;
     }
@@ -56,7 +56,7 @@ struct Warning : public Level {
     using Level::operator>;
     Warning() {
         level_number = 153;
-        color = "\033[33m";
+        color = "\033[1;33m";
         level_name = "Warning";
         printable = true;
     }
@@ -68,7 +68,7 @@ struct Error : public Level {
     using Level::operator>;
     Error() {
         level_number = 204;
-        color = "\033[31m";
+        color = "\033[1;31m";
         level_name = "Error";
         printable = true;
     }
