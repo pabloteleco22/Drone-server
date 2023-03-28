@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 				logger->write(error, "Not all OK in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
 				Telemetry::Health health{sp.telemetry->health()};
 
-				logger->write(error, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + "\n" +
+				logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + "\n" +
 					"    is accelerometer calibration OK: " + string(health.is_accelerometer_calibration_ok ? "true" : "false") + "\n" +
 					"    is armable: " + string(health.is_armable ? "true" : "false") + "\n" +
 					"    is global position OK: " + string(health.is_global_position_ok ? "true" : "false") + "\n" +
@@ -203,7 +203,7 @@ int main(int argc, char *argv[]) {
 
 			sync_point.arrive_and_wait();
 
-			// Take off
+			// Takeoff
 			mut.lock();
 			operation_name = "take off";
 			mut.unlock();
@@ -216,11 +216,11 @@ int main(int argc, char *argv[]) {
 
 				// Waiting to finish takeoff
 				float current_altitude{sp.telemetry->position().relative_altitude_m};
-				logger->write(info, "System altitude " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ": " + std::to_string(current_altitude));
+				logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " altitude: " + std::to_string(current_altitude));
 				while ((std::isnan(current_altitude)) or (current_altitude < takeoff_altitude - reasonable_error)) {
-					logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " taking off");
 					std::this_thread::sleep_for(std::chrono::seconds{refresh_time});
 					current_altitude = sp.telemetry->position().relative_altitude_m;
+					logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " altitude: " + std::to_string(current_altitude));
 				}
 			} else {
 				std::ostringstream os;
@@ -275,7 +275,7 @@ int main(int argc, char *argv[]) {
 				logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " in offboard mode");
 
 				Telemetry::PositionVelocityNedHandle handle {sp.telemetry->subscribe_position_velocity_ned([&waiting_mutex, &expected_position, &handle, &sp](Telemetry::PositionVelocityNed pos) {
-					logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " position & velocity:\n" +
+					logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " position & velocity:\n" +
 						"Pos North: " + std::to_string(pos.position.north_m) + "\n" +
 						"Pos East: " + std::to_string(pos.position.east_m) + "\n" +
 						"Pos Down: " + std::to_string(pos.position.down_m) + "\n" +
