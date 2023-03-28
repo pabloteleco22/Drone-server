@@ -19,6 +19,7 @@ using std::shared_ptr;
 const std::chrono::seconds max_waiting_time{30};
 const float takeoff_altitude{3.0F};
 const int64_t refresh_time{1L};
+const float reasonable_error{0.3};
 
 // Process return code
 enum class ProRetCod : int {
@@ -216,7 +217,7 @@ int main(int argc, char *argv[]) {
 				// Waiting to finish takeoff
 				float current_altitude{sp.telemetry->position().relative_altitude_m};
 				logger->write(info, "System altitude " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ": " + std::to_string(current_altitude));
-				while ((std::isnan(current_altitude)) or (current_altitude < takeoff_altitude)) {
+				while ((std::isnan(current_altitude)) or (current_altitude < takeoff_altitude - reasonable_error)) {
 					logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " taking off");
 					std::this_thread::sleep_for(std::chrono::seconds{refresh_time});
 					current_altitude = sp.telemetry->position().relative_altitude_m;
@@ -283,8 +284,12 @@ int main(int argc, char *argv[]) {
 						"Vel Down: " + std::to_string(pos.velocity.down_m_s) + "\n"
 					);
 
-					if ((pos.position.down_m != expected_position.down_m) or (pos.position.east_m != expected_position.east_m) or
-						(pos.position.north_m != expected_position.north_m)
+					if ((pos.position.down_m <= expected_position.down_m + reasonable_error) and
+						(pos.position.down_m >= expected_position.down_m - reasonable_error) and
+						(pos.position.east_m <= expected_position.east_m + reasonable_error) and
+						(pos.position.east_m >= expected_position.east_m - reasonable_error) and
+						(pos.position.north_m <= expected_position.north_m + reasonable_error) and
+						(pos.position.north_m >= expected_position.north_m - reasonable_error)
 					) {
 						sp.telemetry->unsubscribe_position_velocity_ned(handle);
 						logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " has reached the target");
