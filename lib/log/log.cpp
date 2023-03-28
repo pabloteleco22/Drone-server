@@ -109,18 +109,16 @@ void StandardLogger::write(std::shared_ptr<Level> level, const string &message) 
 }
 
 /** BiLogger **/
-BiLogger::BiLogger(shared_ptr<std::ostream> stream) : TimedLogger() {
-    this->stream = stream;
-}
+BiLogger::BiLogger(shared_ptr<std::ostream> stream) : StreamLogger(stream) {}
 
 void BiLogger::write(std::shared_ptr<Level> level, const string &message) {
+    StreamLogger::write(level, message);
     std_logger.write(level, message);
-    stream_logger.write(level, message);
 }
 
 void BiLogger::set_min_level(shared_ptr<Level> level) {
+    StreamLogger::set_min_level(level);
     std_logger.set_min_level(level);
-    stream_logger.set_min_level(level);
 }
 
 /** ThreadStandardLogger **/

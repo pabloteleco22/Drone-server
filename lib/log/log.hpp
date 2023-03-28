@@ -133,14 +133,13 @@ struct ThreadStandardLogger : public StandardLogger {
         std::mutex mut;
 };
 
-struct BiLogger : public TimedLogger {
+struct BiLogger : public StreamLogger {
     BiLogger(shared_ptr<std::ostream> stream);
-    BiLogger(TimedLogger *other) : TimedLogger(other) {};
-    BiLogger(shared_ptr<TimedLogger> other) : TimedLogger(other) {};
-    virtual void write(shared_ptr<Level> level, const string &message) override;
-    virtual void set_min_level(shared_ptr<Level> level) override;
+    BiLogger(TimedLogger *other) : StreamLogger(other) {};
+    BiLogger(shared_ptr<TimedLogger> other) : StreamLogger(other) {};
+    void write(shared_ptr<Level> level, const string &message) override;
+    void set_min_level(shared_ptr<Level> level) override;
 
-    protected:
+    private:
         StandardLogger std_logger;
-        StreamLogger stream_logger{stream};
 };
