@@ -2,6 +2,7 @@
 #include <mavsdk/plugins/action/action.h>
 #include <mavsdk/plugins/telemetry/telemetry.h>
 #include <mavsdk/plugins/offboard/offboard.h>
+#include <mavsdk/log_callback.h>
 #include <thread>
 #include <barrier>
 #include <chrono>
@@ -10,6 +11,8 @@
 #include <string>
 #include <sstream>
 #include "lib/log/log.hpp"
+
+#define UNUSED(x) (void)(x)
 
 using namespace mavsdk;
 using std::vector;
@@ -65,6 +68,19 @@ int main(int argc, char *argv[]) {
 
 	// Constants
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
+
+	log::subscribe([](log::Level level,   // message severity level
+                          const std::string& message, // message text
+                          const std::string& file,    // source file from which the message was sent
+                          int line) {                 // line number in the source file
+		UNUSED(message);
+		UNUSED(file);
+		UNUSED(line);
+		UNUSED(level);
+		// returning true from the callback disables printing the message to stdout
+		//return level < log::Level::Warn;
+		return true;
+	});
 
 	Mavsdk mavsdk;
 
@@ -215,6 +231,22 @@ int main(int argc, char *argv[]) {
 				logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " taking off");
 
 				// Waiting to finish takeoff
+				std::promise<void> prom;
+				std::future fut{prom.get_future()};
+
+				Telemetry::LandedStateHandle handle = sp.telemetry->subscribe_landed_state([&prom, &sp, &handle](Telemetry::LandedState ls) {
+					if (ls == Telemetry::LandedState::InAir) {
+						prom.set_value();
+						sp.telemetry->unsubscribe_landed_state(handle);
+					} else {
+						std::ostringstream os;
+						os << ls;
+						logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " " + os.str());
+					}
+				});
+
+				fut.get();
+				/*
 				float current_altitude{sp.telemetry->position().relative_altitude_m};
 				logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " altitude: " + std::to_string(current_altitude));
 				while ((std::isnan(current_altitude)) or (current_altitude < takeoff_altitude - reasonable_error)) {
@@ -222,6 +254,7 @@ int main(int argc, char *argv[]) {
 					current_altitude = sp.telemetry->position().relative_altitude_m;
 					logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " altitude: " + std::to_string(current_altitude));
 				}
+				*/
 			} else {
 				std::ostringstream os;
 				os << action_result;
@@ -336,48 +369,6 @@ int main(int argc, char *argv[]) {
 	for (shared_ptr<std::thread> th : threads_for_waiting) {
 		th->join();
 	}
-
-/*
-	// Landing
-//	threads_for_waiting.clear();
-//	operation_ok = true;
-//	sp = system_plugins_list.begin();
-//	while ((check_operation_ok(operation_ok, mut)) and (sp != system_plugins_list.end())) {
-//		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &mut]() {
-//			cout << "Landing system " << static_cast<int>(sp->system->get_system_id()) << endl;
-//
-//			Action::Result result{sp->action->land()}; 
-//			if (result == Action::Result::Success) {
-//				cout << "System " << static_cast<int>(sp->system->get_system_id()) << " landing"<< endl;
-//
-//				// Waiting to finish landing
-//				while (sp->telemetry->armed()) {
-//					cout << "System " << static_cast<int>(sp->system->get_system_id()) << " landing"<< endl;
-//					std::this_thread::sleep_for(std::chrono::seconds{refresh_time});
-//				}
-//			} else {
-//				cerr << "Error landing system " << static_cast<int>(sp->system->get_system_id()) << endl;
-//				cerr << result << endl;
-//
-//				mut.lock();
-//				operation_ok = false;
-//				mut.unlock();
-//			}
-//		}}));
-//
-//		std::advance(sp, 1);
-//	}
-//
-//	for (shared_ptr<std::thread> th : threads_for_waiting) {
-//		th->join();
-//	}
-//
-//    if (operation_ok) {
-//		cout << "All systems on ground" << endl;
-//	} else {
-//		exit(static_cast<int>(ProRetCod::ACTION_FAILURE));
-//	}
-	*/
 
 	return static_cast<int>(ProRetCod::OK);
 }
