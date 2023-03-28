@@ -108,18 +108,29 @@ class TimedLogger : public Logger {
         TimedLogger(shared_ptr<TimedLogger> other);
 };
 
-struct StandardLogger : public TimedLogger {
-    StandardLogger();
-    StandardLogger(TimedLogger *other);
-    StandardLogger(shared_ptr<TimedLogger> other);
-    virtual void write(shared_ptr<Level> level, const string &message) override;
-};
-
 struct StreamLogger : public TimedLogger {
     StreamLogger(shared_ptr<std::ostream> stream);
     StreamLogger(TimedLogger *other) : TimedLogger(other) {};
     StreamLogger(shared_ptr<TimedLogger> other) : TimedLogger(other) {};
     virtual void write(shared_ptr<Level> level, const string &message) override;
+};
+
+struct StandardLogger : public StreamLogger {
+    StandardLogger();
+    StandardLogger(StreamLogger *other);
+    StandardLogger(shared_ptr<StreamLogger> other);
+    virtual void write(shared_ptr<Level> level, const string &message) override;
+};
+
+struct ThreadStandardLogger : public StandardLogger {
+    ThreadStandardLogger() : StandardLogger() {};
+    ThreadStandardLogger(StreamLogger *other) : StandardLogger(other) {};
+    ThreadStandardLogger(shared_ptr<StreamLogger> other) : StandardLogger(other) {};
+    void write(shared_ptr<Level> level, const string &message) override;
+    void set_min_level(shared_ptr<Level> level) override;
+
+    private:
+        std::mutex mut;
 };
 
 struct BiLogger : public TimedLogger {
@@ -132,15 +143,4 @@ struct BiLogger : public TimedLogger {
     protected:
         StandardLogger std_logger;
         StreamLogger stream_logger{stream};
-};
-
-struct ThreadStandardLogger : public StandardLogger {
-    ThreadStandardLogger() : StandardLogger() {};
-    ThreadStandardLogger(TimedLogger *other) : StandardLogger(other) {};
-    ThreadStandardLogger(shared_ptr<TimedLogger> other) : StandardLogger(other) {};
-    void write(shared_ptr<Level> level, const string &message) override;
-    void set_min_level(shared_ptr<Level> level) override;
-
-    private:
-        std::mutex mut;
 };

@@ -75,28 +75,6 @@ double TimedLogger::get_timestamp() const {
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start_time).count();
 }
 
-/** StandardLogger **/
-StandardLogger::StandardLogger() : TimedLogger() {
-    stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
-}
-
-StandardLogger::StandardLogger(TimedLogger *other) : TimedLogger(other) {
-    stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
-}
-
-StandardLogger::StandardLogger(shared_ptr<TimedLogger> other) : TimedLogger(other) {
-    stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
-}
-
-void StandardLogger::write(std::shared_ptr<Level> level, const string &message) {
-    if ((*level >= *min_level) and (level->is_printable())) {
-
-        (*stream) << level->get_color() << "["
-            << get_timestamp()
-            << " | " << level->get_level_name() << "]\033[0m " << message << endl;
-    }
-}
-
 /** StreamLogger **/
 StreamLogger::StreamLogger(shared_ptr<std::ostream> stream) : TimedLogger() {
     this->stream = stream;
@@ -107,6 +85,26 @@ void StreamLogger::write(std::shared_ptr<Level> level, const string &message) {
         (*stream) << "["
             << get_timestamp()
             << " | " << level->get_level_name() << "] " << message << endl;
+    }
+}
+
+/** StandardLogger **/
+StandardLogger::StandardLogger() : StreamLogger(std::shared_ptr<std::ostream>(&cout, [](void *) {})) {}
+
+StandardLogger::StandardLogger(StreamLogger *other) : StreamLogger(other) {
+    stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
+}
+
+StandardLogger::StandardLogger(shared_ptr<StreamLogger> other) : StreamLogger(other) {
+    stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
+}
+
+void StandardLogger::write(std::shared_ptr<Level> level, const string &message) {
+    if ((*level >= *min_level) and (level->is_printable())) {
+
+        (*stream) << level->get_color() << "["
+            << get_timestamp()
+            << " | " << level->get_level_name() << "]\033[0m " << message << endl;
     }
 }
 
