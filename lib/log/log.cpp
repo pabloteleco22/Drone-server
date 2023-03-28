@@ -4,8 +4,7 @@
 using std::cout;
 using std::endl;
 
-Level::Level() {}
-
+/** Level **/
 Level::Level(Level *other) {
     level_number = other->level_number;
     color = other->color;
@@ -40,20 +39,18 @@ bool Level::is_printable() const {
     return printable;
 }
 
+/** Logger **/
 Logger::Logger() {
     min_level = std::make_shared<Level>(new Level);
-    start_time = std::chrono::steady_clock::now();
 }
 
 Logger::Logger(Logger *other) {
     min_level = other->min_level;
-    start_time = other->start_time;
     stream = other->stream;
 }
 
 Logger::Logger(shared_ptr<Logger> other) {
     min_level = other->min_level;
-    start_time = other->start_time;
     stream = other->stream;
 }
 
@@ -61,11 +58,33 @@ void Logger::set_min_level(std::shared_ptr<Level> level) {
     min_level = level;
 }
 
-double Logger::get_timestamp() {
+/** TimedLogger **/
+TimedLogger::TimedLogger() : Logger() {
+    start_time = std::chrono::steady_clock::now();
+}
+
+TimedLogger::TimedLogger(TimedLogger *other) : Logger(other) {
+    start_time = other->start_time;
+}
+
+TimedLogger::TimedLogger(shared_ptr<TimedLogger> other) : Logger(other) {
+    start_time = other->start_time;
+}
+
+double TimedLogger::get_timestamp() const {
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start_time).count();
 }
 
-StandardLogger::StandardLogger() {
+/** StandardLogger **/
+StandardLogger::StandardLogger() : TimedLogger() {
+    stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
+}
+
+StandardLogger::StandardLogger(TimedLogger *other) : TimedLogger(other) {
+    stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
+}
+
+StandardLogger::StandardLogger(shared_ptr<TimedLogger> other) : TimedLogger(other) {
     stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
 }
 
@@ -78,7 +97,8 @@ void StandardLogger::write(std::shared_ptr<Level> level, const string &message) 
     }
 }
 
-StreamLogger::StreamLogger(shared_ptr<std::ostream> stream) {
+/** StreamLogger **/
+StreamLogger::StreamLogger(shared_ptr<std::ostream> stream) : TimedLogger() {
     this->stream = stream;
 }
 
@@ -90,7 +110,8 @@ void StreamLogger::write(std::shared_ptr<Level> level, const string &message) {
     }
 }
 
-BiLogger::BiLogger(shared_ptr<std::ostream> stream) {
+/** BiLogger **/
+BiLogger::BiLogger(shared_ptr<std::ostream> stream) : TimedLogger() {
     this->stream = stream;
 }
 
@@ -104,6 +125,7 @@ void BiLogger::set_min_level(shared_ptr<Level> level) {
     stream_logger.set_min_level(level);
 }
 
+/** ThreadStandardLogger **/
 void ThreadStandardLogger::write(std::shared_ptr<Level> level, const string &message) {
     mut.lock();
 

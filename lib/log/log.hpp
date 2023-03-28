@@ -10,7 +10,7 @@ using std::string;
 using std::shared_ptr;
 
 struct Level {
-    Level();
+    Level() {};
     Level(Level *other);
     Level(shared_ptr<Level> other);
     bool operator>=(const Level &other) const;
@@ -93,31 +93,39 @@ struct Logger {
 
     protected:
         shared_ptr<Level> min_level;
-        virtual double get_timestamp();
         shared_ptr<std::ostream> stream;
-
-    private:
-        std::chrono::time_point<std::chrono::steady_clock> start_time;
 };
 
-struct StandardLogger : public Logger {
+class TimedLogger : public Logger {
+    std::chrono::time_point<std::chrono::steady_clock> start_time;
+
+    protected:
+        virtual double get_timestamp() const;
+
+    public:
+        TimedLogger();
+        TimedLogger(TimedLogger *other);
+        TimedLogger(shared_ptr<TimedLogger> other);
+};
+
+struct StandardLogger : public TimedLogger {
     StandardLogger();
-    StandardLogger(Logger *other) : Logger(other) {};
-    StandardLogger(shared_ptr<Logger> other) : Logger(other) {};
+    StandardLogger(TimedLogger *other);
+    StandardLogger(shared_ptr<TimedLogger> other);
     virtual void write(shared_ptr<Level> level, const string &message) override;
 };
 
-struct StreamLogger : public Logger {
+struct StreamLogger : public TimedLogger {
     StreamLogger(shared_ptr<std::ostream> stream);
-    StreamLogger(Logger *other) : Logger(other) {};
-    StreamLogger(shared_ptr<Logger> other) : Logger(other) {};
+    StreamLogger(TimedLogger *other) : TimedLogger(other) {};
+    StreamLogger(shared_ptr<TimedLogger> other) : TimedLogger(other) {};
     virtual void write(shared_ptr<Level> level, const string &message) override;
 };
 
-struct BiLogger : public Logger {
+struct BiLogger : public TimedLogger {
     BiLogger(shared_ptr<std::ostream> stream);
-    BiLogger(Logger *other) : Logger(other) {};
-    BiLogger(shared_ptr<Logger> other) : Logger(other) {};
+    BiLogger(TimedLogger *other) : TimedLogger(other) {};
+    BiLogger(shared_ptr<TimedLogger> other) : TimedLogger(other) {};
     virtual void write(shared_ptr<Level> level, const string &message) override;
     virtual void set_min_level(shared_ptr<Level> level) override;
 
@@ -128,8 +136,8 @@ struct BiLogger : public Logger {
 
 struct ThreadStandardLogger : public StandardLogger {
     ThreadStandardLogger() : StandardLogger() {};
-    ThreadStandardLogger(Logger *other) : StandardLogger(other) {};
-    ThreadStandardLogger(shared_ptr<Logger> other) : StandardLogger(other) {};
+    ThreadStandardLogger(TimedLogger *other) : StandardLogger(other) {};
+    ThreadStandardLogger(shared_ptr<TimedLogger> other) : StandardLogger(other) {};
     void write(shared_ptr<Level> level, const string &message) override;
     void set_min_level(shared_ptr<Level> level) override;
 
