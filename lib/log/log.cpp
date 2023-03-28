@@ -84,7 +84,6 @@ StreamLogger::StreamLogger(shared_ptr<std::ostream> stream) {
 
 void StreamLogger::write(std::shared_ptr<Level> level, const string &message) {
     if ((*level >= *min_level) and (level->is_printable())) {
-
         (*stream) << "["
             << get_timestamp()
             << " | " << level->get_level_name() << "] " << message << endl;
@@ -103,4 +102,20 @@ void BiLogger::write(std::shared_ptr<Level> level, const string &message) {
 void BiLogger::set_min_level(shared_ptr<Level> level) {
     std_logger.set_min_level(level);
     stream_logger.set_min_level(level);
+}
+
+void ThreadStandardLogger::write(std::shared_ptr<Level> level, const string &message) {
+    mut.lock();
+
+    StandardLogger::write(level, message);
+
+    mut.unlock();
+}
+
+void ThreadStandardLogger::set_min_level(shared_ptr<Level> level) {
+    mut.lock();
+
+    Logger::set_min_level(level);
+
+    mut.unlock();
 }

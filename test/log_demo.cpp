@@ -39,7 +39,7 @@ int main() {
 
     shared_ptr<Logger> standard_stream_logger{make_shared<StreamLogger>(new StreamLogger{shared_ptr<std::ostream>(&cout, [](void *) {})})};
 
-    cout << endl << "standard_stream logger" << endl;
+    cout << endl << "Standard stream logger" << endl;
     cout << "All levels" << endl;
     standard_stream_logger->write(level, "Level message");
     standard_stream_logger->write(debug, "Debug message");
@@ -78,6 +78,7 @@ int main() {
     stream_logger->write(error, "Error message");
     stream_logger->write(silence, "Silence message");
 
+    cout << "Bi logger" << endl;
     shared_ptr<Logger> bi_logger{make_shared<BiLogger>(new BiLogger{shared_ptr<std::ofstream>(new std::ofstream{"build/bilog_demo.log", std::ios::out})})};
 
     bi_logger->write(info, "All levels");
@@ -97,6 +98,27 @@ int main() {
     bi_logger->write(warning, "Warning message");
     bi_logger->write(error, "Error message");
     bi_logger->write(silence, "Silence message");
+
+    cout << "Thread standard logger" << endl;
+    shared_ptr<Logger> thread_standard_logger{make_shared<ThreadStandardLogger>(new ThreadStandardLogger)};
+
+    thread_standard_logger->write(info, "All levels");
+    thread_standard_logger->write(level, "Level message");
+    thread_standard_logger->write(debug, "Debug message");
+    thread_standard_logger->write(info, "Info message");
+    thread_standard_logger->write(warning, "Warning message");
+    thread_standard_logger->write(error, "Error message");
+    thread_standard_logger->write(silence, "Silence message");
+
+    cout << "Min Warning level" << endl;
+    thread_standard_logger->set_min_level(warning);
+
+    thread_standard_logger->write(level, "Level message");
+    thread_standard_logger->write(debug, "Debug message");
+    thread_standard_logger->write(info, "Info message");
+    thread_standard_logger->write(warning, "Warning message");
+    thread_standard_logger->write(error, "Error message");
+    thread_standard_logger->write(silence, "Silence message");
 
     return 0;
 }

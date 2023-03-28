@@ -4,6 +4,7 @@
 #include <memory>
 #include <chrono>
 #include <ostream>
+#include <mutex>
 
 using std::string;
 using std::shared_ptr;
@@ -123,4 +124,15 @@ struct BiLogger : public Logger {
     protected:
         StandardLogger std_logger;
         StreamLogger stream_logger{stream};
+};
+
+struct ThreadStandardLogger : public StandardLogger {
+    ThreadStandardLogger() : StandardLogger() {};
+    ThreadStandardLogger(Logger *other) : StandardLogger(other) {};
+    ThreadStandardLogger(shared_ptr<Logger> other) : StandardLogger(other) {};
+    void write(shared_ptr<Level> level, const string &message) override;
+    void set_min_level(shared_ptr<Level> level) override;
+
+    private:
+        std::mutex mut;
 };

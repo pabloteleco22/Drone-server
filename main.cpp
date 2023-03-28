@@ -49,7 +49,7 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
 bool check_operation_ok(bool &operation_ok, std::mutex &mut);
 
-shared_ptr<Logger> logger{new StandardLogger};
+shared_ptr<Logger> logger{new ThreadStandardLogger};
 shared_ptr<Level> info{new Info};
 shared_ptr<Level> error{new Error};
 
@@ -74,9 +74,10 @@ int main(int argc, char *argv[]) {
 	wait_systems(mavsdk, expected_systems);
 
 	for (shared_ptr<System> s : mavsdk.systems()) {
-		logger->write(info, "System: " + std::to_string(static_cast<int>(s->get_system_id())));
-		logger->write(info, "    Is connected: " + string((s->is_connected()) ? "true" : "false"));
-		logger->write(info, "    Has autopilot: " + string((s->has_autopilot()) ? "true" : "false"));
+		logger->write(info, "System: " + std::to_string(static_cast<int>(s->get_system_id())) + "\n" +
+			"    Is connected: " + string((s->is_connected()) ? "true" : "false") + "\n" +
+			"    Has autopilot: " + string((s->has_autopilot()) ? "true" : "false")
+		);
 	}
 
 	vector<SystemPlugins> system_plugins_list{};
