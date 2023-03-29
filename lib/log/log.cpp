@@ -46,12 +46,10 @@ Logger::Logger() {
 
 Logger::Logger(Logger *other) {
     min_level = other->min_level;
-    stream = other->stream;
 }
 
 Logger::Logger(shared_ptr<Logger> other) {
     min_level = other->min_level;
-    stream = other->stream;
 }
 
 void Logger::set_min_level(std::shared_ptr<Level> level) {
@@ -79,6 +77,22 @@ double TimedLogger::get_timestamp() const {
 StreamLogger::StreamLogger(shared_ptr<std::ostream> stream) : TimedLogger() {
     this->stream = stream;
 }
+
+StreamLogger::StreamLogger(std::ostream *stream) : TimedLogger() {
+    this->stream = shared_ptr<std::ostream>{stream};
+}
+
+StreamLogger::StreamLogger(StreamLogger *other) : TimedLogger(other) {
+    stream = other->stream;
+}
+
+StreamLogger::StreamLogger(shared_ptr<StreamLogger> other) : TimedLogger(other) {
+    stream = other->stream;
+}
+
+StreamLogger::StreamLogger(TimedLogger *other) : TimedLogger(other) {}
+
+StreamLogger::StreamLogger(shared_ptr<TimedLogger> other) : TimedLogger(other) {}
 
 void StreamLogger::write(std::shared_ptr<Level> level, const string &message) {
     if ((*level >= *min_level) and (level->is_printable())) {
@@ -108,32 +122,56 @@ void StandardLogger::write(std::shared_ptr<Level> level, const string &message) 
     }
 }
 
+/** ThreadLogger **/
+ThreadLogger::ThreadLogger(Logger *other) : Logger(other) {
+    logger = std::shared_ptr<Logger>(other);
+}
+
+ThreadLogger::ThreadLogger(shared_ptr<Logger> other) {
+    logger = other;
+}
+
+ThreadLogger::ThreadLogger(ThreadLogger *other) {
+    logger = other->logger;
+}
+
+ThreadLogger::ThreadLogger(shared_ptr<ThreadLogger> other) {
+    logger = other->logger;
+}
+
+void ThreadLogger::write(std::shared_ptr<Level> level, const string &message) {
+    mut.lock();
+
+    logger->write(level, message);
+
+    mut.unlock();
+}
+
+void ThreadLogger::set_min_level(shared_ptr<Level> level) {
+    mut.lock();
+
+    logger->set_min_level(level);
+
+    mut.unlock();
+}
+
 /** BiLogger **/
-BiLogger::BiLogger(shared_ptr<std::ostream> stream) : StreamLogger(stream) {}
+BiLogger::BiLogger(Logger *logger1, Logger *logger2) {
+    this->logger1 = shared_ptr<Logger>(logger1);
+    this->logger2 = shared_ptr<Logger>(logger2);
+}
+
+BiLogger::BiLogger(shared_ptr<Logger> logger1, shared_ptr<Logger> logger2) {
+    this->logger1 = logger1;
+    this->logger2 = logger2;
+}
 
 void BiLogger::write(std::shared_ptr<Level> level, const string &message) {
-    StreamLogger::write(level, message);
-    std_logger.write(level, message);
+    logger1->write(level, message);
+    logger2->write(level, message);
 }
 
 void BiLogger::set_min_level(shared_ptr<Level> level) {
-    StreamLogger::set_min_level(level);
-    std_logger.set_min_level(level);
-}
-
-/** ThreadStandardLogger **/
-void ThreadStandardLogger::write(std::shared_ptr<Level> level, const string &message) {
-    mut.lock();
-
-    StandardLogger::write(level, message);
-
-    mut.unlock();
-}
-
-void ThreadStandardLogger::set_min_level(shared_ptr<Level> level) {
-    mut.lock();
-
-    Logger::set_min_level(level);
-
-    mut.unlock();
+    logger1->set_min_level(level);
+    logger2->set_min_level(level);
 }

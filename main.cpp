@@ -54,7 +54,7 @@ struct SystemPlugins {
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
 
-shared_ptr<Logger> logger{new ThreadStandardLogger};
+shared_ptr<Logger> logger{new ThreadLogger{new StandardLogger}};
 shared_ptr<Level> info{new Info};
 shared_ptr<Level> error{new Error};
 shared_ptr<Level> debug{new Debug};
