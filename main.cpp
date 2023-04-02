@@ -92,9 +92,9 @@ int main(int argc, char *argv[]) {
 	wait_systems(mavsdk, expected_systems);
 
 	for (shared_ptr<System> s : mavsdk.systems()) {
-		logger->write(info, "System: " + std::to_string(static_cast<int>(s->get_system_id())) + "\n" +
+		logger->write(debug, "System: " + std::to_string(static_cast<int>(s->get_system_id())) + "\n" +
 			"    Is connected: " + string((s->is_connected()) ? "true" : "false") + "\n" +
-			"    Has autopilot: " + string((s->has_autopilot()) ? "true" : "false")
+			"    Has autopilot: " + string((s->has_autopilot()) ? "true" : "false") + "\n"
 		);
 	}
 
@@ -239,9 +239,11 @@ int main(int argc, char *argv[]) {
 						prom.set_value();
 						sp.telemetry->unsubscribe_landed_state(handle);
 					} else {
+						float current_altitude{sp.telemetry->position().relative_altitude_m};
 						std::ostringstream os;
 						os << ls;
-						logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " " + os.str());
+						logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " " + os.str() +
+																									" - Altitude: " + std::to_string(current_altitude));
 					}
 				});
 

@@ -33,9 +33,7 @@ class RandomFlag : public Flag {
         inline static const MaxMin default_east_m{10, -10};
         inline static const MaxMin default_down_m{10, -10};
 
-        RandomFlag(MaxMin north_m={default_north_m.get_max(), default_north_m.get_min()},
-                   MaxMin east_m={default_east_m.get_max(), default_east_m.get_min()},
-                   MaxMin down_m={default_down_m.get_max(), default_down_m.get_min()});
+        RandomFlag(MaxMin north_m=default_north_m, MaxMin east_m=default_east_m, MaxMin down_m=default_down_m);
         Telemetry::PositionNed get_flag_position() const override;
         operator std::string() const override;
         operator Telemetry::PositionNed() const override;
