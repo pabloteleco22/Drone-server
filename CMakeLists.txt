@@ -14,6 +14,7 @@ add_definitions("-Wall -Wextra")
 add_subdirectory(lib/flag)
 add_subdirectory(lib/log)
 add_subdirectory(lib/missionhelper)
+add_subdirectory(lib/poly)
 
 # Finds MAVSDK when installed system wide.
 find_package(MAVSDK REQUIRED)
@@ -28,6 +29,7 @@ target_link_libraries(drone_server
     MAVSDK::mavsdk             #All apps link against mavsdk library
     Flag
     Log
+    Poly
     MissionHelper
 )
 
@@ -84,7 +86,18 @@ target_link_libraries(log_demo
     Log
 )
 
+##------------------ Poly demo ------------------##
+add_executable(poly_test
+    test/poly_test.cpp
+)
+
+target_link_libraries(poly_test
+    GTest::gtest_main
+    Poly
+)
+
 include(GoogleTest)
 gtest_discover_tests(flag_test)
 gtest_discover_tests(log_test)
 gtest_discover_tests(missionhelper_test)
+gtest_discover_tests(poly_test)

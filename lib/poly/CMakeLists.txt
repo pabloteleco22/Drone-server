@@ -1,0 +1,1 @@
+add_library(Poly point.cpp vector.cpp line.cpp segment.cpp polygon.cpp)
