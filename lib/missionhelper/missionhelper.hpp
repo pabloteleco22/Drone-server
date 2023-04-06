@@ -6,4 +6,5 @@ struct Point {
 };
 
 struct Area {
+
 };

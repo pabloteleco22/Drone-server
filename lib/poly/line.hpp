@@ -188,20 +188,6 @@ class Segment {
         */
         bool cross_line(const Segment &seg, Point &result) const;
 
-        /**
-         * @brief Returns whether the line and the segment intersect and
-         * the point of intersection between them
-         * 
-         * @param 
-         * line: The segment, not the line.
-         *
-         * @param
-         * result: The intersection point.
-         * 
-         * @return If the line and the segment intersect
-        */
-        friend bool cross_line(const Line &lin, const Segment &seg, Point &result);
-
         bool operator==(const Segment &other) const;
         Segment &operator=(const Segment &other);
 

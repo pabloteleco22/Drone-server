@@ -253,32 +253,6 @@ TEST(LineTest, CrossLineLineFalse) {
     ASSERT_FALSE(lin1.cross_line(lin2, inter_point));
 }
 
-TEST(LineTest, CrossLineSegmentTrue) {
-    const Point line_start_point;
-    const Point line_end_point{4, 4};
-    const Point segment_start_point{0, 4};
-    const Point segment_end_point{6, 0};
-    Point inter_point;
-    const Point expected_inter_point{2.4, 2.4};
-    const Line line{line_start_point, line_end_point};
-    const Segment segment{segment_start_point, segment_end_point};
-
-    ASSERT_TRUE(cross_line(line, segment, inter_point));
-    ASSERT_EQ(inter_point, expected_inter_point);
-}
-
-TEST(LineTest, CrossLineSegmentFalse) {
-    const Point line_start_point{0, 6};
-    const Point line_end_point{18, 0};
-    const Point segment_start_point;
-    const Point segment_end_point{4, 4};
-    Point inter_point;
-    const Line line{line_start_point, line_end_point};
-    const Segment segment{segment_start_point, segment_end_point};
-
-    ASSERT_FALSE(cross_line(line, segment, inter_point));
-}
-
 TEST(LineTest, IsSameTrue1) {
     const Point start_point1;
     const Point end_point1{2, 4};

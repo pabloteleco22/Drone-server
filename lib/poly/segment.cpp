@@ -170,10 +170,6 @@ bool Segment::cross_line(const Segment &seg, Point &result) const {
            inside(result.y, minimum(seg.start.y, seg.end.y), maximum(seg.start.y, seg.end.y));
 }
 
-bool cross_line(const Line &lin, const Segment &seg, Point &result) {
-    return seg.cross_line(lin, result);
-}
-
 bool Segment::operator==(const Segment &other) const {
     return start == other.start and end == other.end;
 }

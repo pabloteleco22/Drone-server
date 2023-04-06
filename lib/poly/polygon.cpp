@@ -18,7 +18,7 @@ Polygons::Polygons(const Segment &s1, const Segment &s2) {
     if (p1 != p4) {
         Line l1s{p1, bisector.get_nearest_point(p1)};
         Point np1;
-        p1_exist = cross_line(l1s, s2, np1) && np1 != p4;
+        p1_exist = s2.cross_line(l1s, np1) && np1 != p4;
         if (p1_exist) {
             leftTriangle.push_back(p1);
             leftTriangle.push_back(p4);
@@ -31,7 +31,7 @@ Polygons::Polygons(const Segment &s1, const Segment &s2) {
 
         Line l2e{p4, bisector.get_nearest_point(p4)};
         Point np4;
-        p4_exist = cross_line(l2e, s1, np4) && np4 != p1;
+        p4_exist = s1.cross_line(l2e, np4) && np4 != p1;
         if (p4_exist) {
             leftTriangle.push_back(p4);
             leftTriangle.push_back(p1);
@@ -51,7 +51,7 @@ Polygons::Polygons(const Segment &s1, const Segment &s2) {
     if (p2 != p3) {
         Line l2s{p3, bisector.get_nearest_point(p3)};
         Point np3;
-        p3_exist = cross_line(l2s, s1, np3) && np3 != p2;
+        p3_exist = s1.cross_line(l2s, np3) && np3 != p2;
         if (p3_exist) {
             rightTriangle.push_back(p3);
             rightTriangle.push_back(p2);
@@ -64,7 +64,7 @@ Polygons::Polygons(const Segment &s1, const Segment &s2) {
 
         Line l1e{p2, bisector.get_nearest_point(p2)};
         Point np2;
-        p2_exist = cross_line(l1e, s2, np2) && np2 != p3;
+        p2_exist = s2.cross_line(l1e, np2) && np2 != p3;
         if (p2_exist) {
             rightTriangle.push_back(p2);
             rightTriangle.push_back(p3);
