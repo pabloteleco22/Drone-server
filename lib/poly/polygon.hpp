@@ -155,17 +155,17 @@ struct Polygons {
 
     Line bisector;
 
-    Polygon leftTriangle;
+    Polygon left_triangle;
     Polygon trapezoid;
-    Polygon rightTriangle;
+    Polygon right_triangle;
 
     bool p1_exist;
     bool p2_exist;
     bool p3_exist;
     bool p4_exist;
 
-    double leftTriangleSquare;
-    double trapezoidSquare;
-    double rightTriangleSquare;
-    double totalSquare;
+    double left_triangle_square;
+    double trapezoid_square;
+    double right_triangle_square;
+    double total_square;
 };

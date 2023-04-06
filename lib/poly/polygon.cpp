@@ -20,9 +20,9 @@ Polygons::Polygons(const Segment &s1, const Segment &s2) {
         Point np1;
         p1_exist = s2.cross_line(l1s, np1) && np1 != p4;
         if (p1_exist) {
-            leftTriangle.push_back(p1);
-            leftTriangle.push_back(p4);
-            leftTriangle.push_back(np1);
+            left_triangle.push_back(p1);
+            left_triangle.push_back(p4);
+            left_triangle.push_back(np1);
 
             trapezoid.push_back(np1);
         } else {
@@ -33,9 +33,9 @@ Polygons::Polygons(const Segment &s1, const Segment &s2) {
         Point np4;
         p4_exist = s1.cross_line(l2e, np4) && np4 != p1;
         if (p4_exist) {
-            leftTriangle.push_back(p4);
-            leftTriangle.push_back(p1);
-            leftTriangle.push_back(np4);
+            left_triangle.push_back(p4);
+            left_triangle.push_back(p1);
+            left_triangle.push_back(np4);
 
             trapezoid.push_back(np4);
         } else {
@@ -53,9 +53,9 @@ Polygons::Polygons(const Segment &s1, const Segment &s2) {
         Point np3;
         p3_exist = s1.cross_line(l2s, np3) && np3 != p2;
         if (p3_exist) {
-            rightTriangle.push_back(p3);
-            rightTriangle.push_back(p2);
-            rightTriangle.push_back(np3);
+            right_triangle.push_back(p3);
+            right_triangle.push_back(p2);
+            right_triangle.push_back(np3);
 
             trapezoid.push_back(np3);
         } else {
@@ -66,9 +66,9 @@ Polygons::Polygons(const Segment &s1, const Segment &s2) {
         Point np2;
         p2_exist = s2.cross_line(l1e, np2) && np2 != p3;
         if (p2_exist) {
-            rightTriangle.push_back(p2);
-            rightTriangle.push_back(p3);
-            rightTriangle.push_back(np2);
+            right_triangle.push_back(p2);
+            right_triangle.push_back(p3);
+            right_triangle.push_back(np2);
 
             trapezoid.push_back(np2);
         } else {
@@ -79,42 +79,42 @@ Polygons::Polygons(const Segment &s1, const Segment &s2) {
         trapezoid.push_back(p3);
     }
 
-    leftTriangleSquare = leftTriangle.count_square();
-    trapezoidSquare = trapezoid.count_square();
-    rightTriangleSquare = rightTriangle.count_square();
+    left_triangle_square = left_triangle.count_square();
+    trapezoid_square = trapezoid.count_square();
+    right_triangle_square = right_triangle.count_square();
 
-    totalSquare = leftTriangleSquare + trapezoidSquare + rightTriangleSquare;
+    total_square = left_triangle_square + trapezoid_square + right_triangle_square;
 }
 
 bool Polygons::find_cut_line(double square, Segment &cut_line) {
-    if (square > totalSquare) {
+    if (square > total_square) {
         return false;
     }
 
-    if (!leftTriangle.empty() && square < leftTriangleSquare) {
-        double m{square / leftTriangleSquare};
-        Point p{leftTriangle[1] + (leftTriangle[2] - leftTriangle[1]) * m};
+    if (!left_triangle.empty() && square < left_triangle_square) {
+        double m{square / left_triangle_square};
+        Point p{left_triangle[1] + (left_triangle[2] - left_triangle[1]) * m};
         if (p1_exist) {
-            cut_line = Segment{p, leftTriangle[0]};
+            cut_line = Segment{p, left_triangle[0]};
             return true;
         } else if(p4_exist) {
-            cut_line = Segment{leftTriangle[0], p};
+            cut_line = Segment{left_triangle[0], p};
             return true;
         }
-    } else if(leftTriangleSquare < square && square < (leftTriangleSquare + trapezoidSquare)) {
+    } else if(left_triangle_square < square && square < (left_triangle_square + trapezoid_square)) {
         Segment t{trapezoid[0], trapezoid[3]};
         double tgA{Segment::get_tan_angle(t, bisector)};
-        double S{square - leftTriangleSquare};
+        double S{square - left_triangle_square};
         double m;
         if (fabs(tgA) > POLY_SPLIT_EPS) {
             double a{Segment(trapezoid[0], trapezoid[1]).length()};
             double b{Segment(trapezoid[2], trapezoid[3]).length()};
-            double hh{2.0 * trapezoidSquare / (a + b)};
+            double hh{2.0 * trapezoid_square / (a + b)};
             double d{a * a - 4.0 * tgA * S};
             double h{-(-a + sqrt(d)) / (2.0 * tgA)};
             m = h / hh;
         } else {
-            m = S / trapezoidSquare;
+            m = S / trapezoid_square;
         }
         Point p{trapezoid[0] + (trapezoid[3] - trapezoid[0]) * m};
         Point pp{trapezoid[1] + (trapezoid[2] - trapezoid[1]) * m};
@@ -122,15 +122,15 @@ bool Polygons::find_cut_line(double square, Segment &cut_line) {
         cut_line = Segment{p, pp};
 
         return true;
-    } else if(!rightTriangle.empty() && square > leftTriangleSquare + trapezoidSquare) {
-        double S{square - leftTriangleSquare - trapezoidSquare};
-        double m{S / rightTriangleSquare};
-        Point p{rightTriangle[2] + (rightTriangle[1] - rightTriangle[2]) * m};
+    } else if(!right_triangle.empty() && square > left_triangle_square + trapezoid_square) {
+        double S{square - left_triangle_square - trapezoid_square};
+        double m{S / right_triangle_square};
+        Point p{right_triangle[2] + (right_triangle[1] - right_triangle[2]) * m};
         if (p3_exist) {
-            cut_line = Segment{rightTriangle[0], p};
+            cut_line = Segment{right_triangle[0], p};
             return true;
         } else if (p2_exist) {
-            cut_line = Segment{p, rightTriangle[0]};
+            cut_line = Segment{p, right_triangle[0]};
             return true;
         }
     }
