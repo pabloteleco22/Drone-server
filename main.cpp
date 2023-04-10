@@ -10,6 +10,7 @@
 #include "lib/flag/flag.hpp"
 #include <string>
 #include <sstream>
+#include <fstream>
 #include "lib/log/log.hpp"
 
 #define UNUSED(x) (void)(x)
@@ -19,12 +20,12 @@ using std::vector;
 using std::shared_ptr;
 
 // Constants
-const std::chrono::seconds max_waiting_time{30};
+const std::chrono::seconds max_waiting_time{10};
 const float takeoff_altitude{3.0F};
 const std::chrono::seconds refresh_time{1};
 const float reasonable_error{0.3};
-const float percentage_drones_required{66.7};
-const unsigned int max_attempts{0};
+const float percentage_drones_required{66};
+const unsigned int max_attempts{4};
 
 // Process return code
 enum class ProRetCod : int {
@@ -54,12 +55,17 @@ struct SystemPlugins {
 };
 
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
-void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
+float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
 
 shared_ptr<LoggerDecoration> logger_decoration{new HourLoggerDecoration};
-shared_ptr<Logger> logger{new ThreadLogger{new StandardLogger{logger_decoration}}};
-shared_ptr<Level> info{new Info};
+shared_ptr<std::ostream> stream{new std::ofstream{"logs/last_execution.log"}};
+shared_ptr<Logger> logger{new BiLogger{
+	new ThreadLogger{new StandardLogger{logger_decoration}},
+	new ThreadLogger{new StreamLogger{stream, logger_decoration}}
+}};
 shared_ptr<Level> error{new Error};
+shared_ptr<Level> warning{new Warning};
+shared_ptr<Level> info{new Info};
 shared_ptr<Level> debug{new Debug};
 
 int main(int argc, char *argv[]) {
@@ -92,18 +98,16 @@ int main(int argc, char *argv[]) {
 	logger->write(info, "The flag is in:\n" + static_cast<string>(*flag));
 
 	establish_connections(argc, argv, mavsdk);
-	wait_systems(mavsdk, expected_systems);
+	float final_systems{wait_systems(mavsdk, expected_systems)};
+
+	vector<SystemPlugins> system_plugins_list{};
 
 	for (shared_ptr<System> s : mavsdk.systems()) {
 		logger->write(debug, "System: " + std::to_string(static_cast<int>(s->get_system_id())) + "\n" +
 			"    Is connected: " + string((s->is_connected()) ? "true" : "false") + "\n" +
 			"    Has autopilot: " + string((s->has_autopilot()) ? "true" : "false") + "\n"
 		);
-	}
 
-	vector<SystemPlugins> system_plugins_list{};
-
-	for (shared_ptr<System> s : mavsdk.systems()) {
 		system_plugins_list.push_back(SystemPlugins(s));
 	}
 
@@ -115,19 +119,18 @@ int main(int argc, char *argv[]) {
 	std::string operation_name{"set rate position & velocity"};
 	std::string next_operation_name{};
 	ProRetCod error_code = ProRetCod::UNKNOWN_ERROR;
-	std::barrier sync_point(expected_systems, [&operation_ok, &operation_name, &error_code]() {
+	std::barrier sync_point{static_cast<std::ptrdiff_t>(final_systems), [&operation_ok, &operation_name, &error_code]() {
 			if (operation_ok) {
 				logger->write(info, "Synchronization point: " + operation_name);
 			} else {
 				logger->write(error, "Operation \"" + operation_name + "\" fails");
 				exit(static_cast<int>(error_code));
 			}
-		});
-	float final_systems{static_cast<float>(expected_systems)};
+		}};
 
 	for (auto &sp : system_plugins_list) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &operation_name, &mut, &sync_point, &error_code, &final_systems]() {
-			const float expected_systems{final_systems};
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &operation_name, &mut, &sync_point, &error_code, &final_systems, &expected_systems]() {
+			const float expected_systems_float{static_cast<float>(expected_systems)};
 
 			// Sets the position packet sending rate
 			logger->write(info, "Setting rate in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
@@ -155,14 +158,14 @@ int main(int argc, char *argv[]) {
 			logger->write(info, "Checking system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
 
 			bool all_ok{sp.telemetry->health_all_ok()}; 
-			unsigned int attempts{0};
-			while ((not all_ok) and (attempts < max_attempts)) {
-				++attempts;
+			unsigned int attempts{max_attempts};
+			while ((not all_ok) and (attempts > 0)) {
+				--attempts;
 
-				logger->write(error, "Not all OK in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+				logger->write(error, "Not all OK in system " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ". Remaining attempts: " + std::to_string(attempts));
 				Telemetry::Health health{sp.telemetry->health()};
 
-				logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + "\n" +
+				logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + "\n" +
 					"    is accelerometer calibration OK: " + string(health.is_accelerometer_calibration_ok ? "true" : "false") + "\n" +
 					"    is armable: " + string(health.is_armable ? "true" : "false") + "\n" +
 					"    is global position OK: " + string(health.is_global_position_ok ? "true" : "false") + "\n" +
@@ -181,20 +184,19 @@ int main(int argc, char *argv[]) {
 				logger->write(info, "All OK in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
 				sync_point.arrive_and_wait();
 			} else {
+				float percentage_remaining_systems;
 				mut.lock();
 				--final_systems;
-				if ((100.0F * final_systems / static_cast<float>(expected_systems)) < percentage_drones_required) {
+				percentage_remaining_systems = 100.0F * final_systems / expected_systems_float;
+				if (percentage_remaining_systems < percentage_drones_required) {
 					operation_ok = false;
 					error_code = ProRetCod::TELEMETRY_FAILURE;
 				}
 				mut.unlock();
-				logger->write(error, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " discarded");
+				logger->write(warning, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " discarded. Remaining " + std::to_string(percentage_remaining_systems) + "%");
 				sync_point.arrive_and_drop();
 				return;
 			}
-
-
-
 
 			// Set takeoff altitude
 			mut.lock();
@@ -227,20 +229,36 @@ int main(int argc, char *argv[]) {
 			logger->write(info, "Arming system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
 
 			action_result = sp.action->arm(); 
-			if (action_result == Action::Result::Success) {
-				logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " armed");
-			} else {
+			attempts = max_attempts;
+			while ((action_result != Action::Result::Success) and (attempts > 0)) {
+				--attempts;
+
 				std::ostringstream os;
 				os << action_result;
 				logger->write(error, "Error arming system " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ": " + os.str());
 
-				mut.lock();
-				operation_ok = false;
-				error_code = ProRetCod::ACTION_FAILURE;
-				mut.unlock();
+				std::this_thread::sleep_for(refresh_time);
+
+				action_result = sp.action->arm();
 			}
 
-			sync_point.arrive_and_wait();
+			if (action_result == Action::Result::Success) {
+				logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " armed");
+				sync_point.arrive_and_wait();
+			} else {
+				float percentage_remaining_systems;
+				mut.lock();
+				--final_systems;
+				percentage_remaining_systems = 100.0F * final_systems / expected_systems_float;
+				if (percentage_remaining_systems < percentage_drones_required) {
+					operation_ok = false;
+					error_code = ProRetCod::ACTION_FAILURE;
+				}
+				mut.unlock();
+				logger->write(warning, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " discarded. Remaining " + std::to_string(percentage_remaining_systems) + "%");
+				sync_point.arrive_and_drop();
+				return;
+			}
 
 			// Takeoff
 			mut.lock();
@@ -257,29 +275,20 @@ int main(int argc, char *argv[]) {
 				std::promise<void> prom;
 				std::future fut{prom.get_future()};
 
-				Telemetry::LandedStateHandle handle = sp.telemetry->subscribe_landed_state([&prom, &sp, &handle](Telemetry::LandedState ls) {
-					if (ls == Telemetry::LandedState::InAir) {
+				Telemetry::LandedStateHandle handle = sp.telemetry->subscribe_landed_state([&prom, &sp, &handle](Telemetry::LandedState land_state) {
+					if (land_state == Telemetry::LandedState::InAir) {
 						prom.set_value();
 						sp.telemetry->unsubscribe_landed_state(handle);
 					} else {
 						float current_altitude{sp.telemetry->position().relative_altitude_m};
 						std::ostringstream os;
-						os << ls;
+						os << land_state;
 						logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " " + os.str() +
 																									" - Altitude: " + std::to_string(current_altitude));
 					}
 				});
 
 				fut.get();
-				/*
-				float current_altitude{sp.telemetry->position().relative_altitude_m};
-				logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " altitude: " + std::to_string(current_altitude));
-				while ((std::isnan(current_altitude)) or (current_altitude < takeoff_altitude - reasonable_error)) {
-					std::this_thread::sleep_for(refresh_time);
-					current_altitude = sp.telemetry->position().relative_altitude_m;
-					logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " altitude: " + std::to_string(current_altitude));
-				}
-				*/
 			} else {
 				std::ostringstream os;
 				os << action_result;
@@ -421,12 +430,12 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 	}
 }
 
-void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems) {
+float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems) {
 	vector<System>::size_type discovered_systems {mavsdk.systems().size()};
 
 	std::promise<void> prom{};
 	std::future fut{prom.get_future()};
-	unsigned int times_executed {0};
+	unsigned int times_executed{0};
 
 	Mavsdk::NewSystemHandle system_handle = mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, expected_systems, &prom, &times_executed, &system_handle]() {
 		discovered_systems = mavsdk.systems().size();
@@ -445,9 +454,17 @@ void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syste
 	});
 	
 	if (fut.wait_for(max_waiting_time) != std::future_status::ready) {
-		logger->write(error, "Not all systems found");
-		exit(static_cast<int>(ProRetCod::NO_SYSTEMS_FOUND));
-	} else {
-		logger->write(info, "Systems search completed");
+		const float percentage_systems_found{100.0F * static_cast<float>(discovered_systems) / static_cast<float>(expected_systems)};
+
+		logger->write(warning, "Not all systems found: " + std::to_string(percentage_systems_found) + "%");
+
+		if (percentage_systems_found < percentage_drones_required) {
+			logger->write(error, "Cannot continue");
+
+			exit(static_cast<int>(ProRetCod::NO_SYSTEMS_FOUND));
+		}
 	}
+	logger->write(info, "Systems search completed");
+
+	return static_cast<float>(discovered_systems);
 }

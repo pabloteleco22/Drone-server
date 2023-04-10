@@ -1,6 +1,4 @@
 .vscode
 build
-test/build
-flag/CMakeFiles
-*.cmake
+*.log
 Makefile

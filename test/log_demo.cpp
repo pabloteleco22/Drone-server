@@ -57,7 +57,7 @@ int main() {
     standard_stream_logger->write(error, "Error message");
     standard_stream_logger->write(silence, "Silence message");
 
-    shared_ptr<Logger> stream_logger{shared_ptr<Logger>{new StreamLogger{new std::ofstream{"build/log_demo.log", std::ios::out}}}};
+    shared_ptr<Logger> stream_logger{shared_ptr<Logger>{new StreamLogger{new std::ofstream{"logs/test/log_demo.log", std::ios::out}}}};
 
     stream_logger->write(info, "All levels");
     stream_logger->write(level, "Level message");
@@ -99,7 +99,7 @@ int main() {
     thread_standard_logger->write(silence, "Silence message");
 
     shared_ptr<Logger> thread_stream_logger{shared_ptr<Logger>{new ThreadLogger{new StreamLogger{
-                                                        new std::ofstream{"build/thread_log_demo.log", std::ios::out}}}}};
+                                                        new std::ofstream{"logs/test/thread_log_demo.log", std::ios::out}}}}};
 
     thread_stream_logger->write(info, "All levels");
     thread_stream_logger->write(level, "Level message");
@@ -120,8 +120,9 @@ int main() {
     thread_stream_logger->write(silence, "Silence message");
 
     cout << endl << "Bi logger" << endl;
-    shared_ptr<Logger> bi_logger{shared_ptr<Logger>{new BiLogger{new ThreadLogger{new StandardLogger{new HourLoggerDecoration}},
-                                                        new ThreadLogger{new StreamLogger{new std::ofstream{"build/bilog_demo.log", std::ios::out}}}}}};
+    shared_ptr<LoggerDecoration> logger_decoration{new HourLoggerDecoration};
+    shared_ptr<Logger> bi_logger{shared_ptr<Logger>{new BiLogger{new ThreadLogger{new StandardLogger{logger_decoration}},
+                                                        new ThreadLogger{new StreamLogger{shared_ptr<std::ofstream>{new std::ofstream{"logs/test/bilog_demo.log", std::ios::out}}, logger_decoration}}}}};
 
     bi_logger->write(info, "All levels");
     bi_logger->write(level, "Level message");

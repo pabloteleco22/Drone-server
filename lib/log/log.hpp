@@ -57,7 +57,7 @@ struct Warning : public Level {
     Warning() {
         level_number = 153;
         color = "\033[1;33m";
-        level_name = "Warning";
+        level_name = "Warn";
         printable = true;
     }
 };
