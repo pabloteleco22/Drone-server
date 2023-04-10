@@ -84,11 +84,36 @@ struct Silence : public Level {
     }
 };
 
+struct LoggerDecoration {
+    virtual string get_decoration() const = 0;
+};
+
+struct VoidLoggerDecoration : public LoggerDecoration {
+    virtual string get_decoration() const override;
+};
+
+struct TimedLoggerDecoration : public LoggerDecoration {
+    TimedLoggerDecoration();
+    TimedLoggerDecoration(TimedLoggerDecoration &other);
+    virtual string get_decoration() const override;
+
+    private:
+        std::chrono::time_point<std::chrono::steady_clock> start_time;
+};
+
+struct HourLoggerDecoration : public LoggerDecoration {
+    virtual string get_decoration() const override;
+};
+
 struct Logger {
     Logger();
+    Logger(Logger &other);
+
     Logger(Logger *other);
     Logger(shared_ptr<Logger> other);
+
     virtual ~Logger() {};
+
     virtual void write(shared_ptr<Level> level, const string &message) = 0;
     virtual void set_min_level(shared_ptr<Level> level);
 
@@ -96,45 +121,49 @@ struct Logger {
         shared_ptr<Level> min_level;
 };
 
-class TimedLogger : public Logger {
-    std::chrono::time_point<std::chrono::steady_clock> start_time;
-
-    protected:
-        virtual double get_timestamp() const;
-
-    public:
-        TimedLogger();
-        TimedLogger(TimedLogger *other);
-        TimedLogger(shared_ptr<TimedLogger> other);
-};
-
-struct StreamLogger : public TimedLogger {
+struct StreamLogger : public Logger {
     StreamLogger() = delete;
+
     StreamLogger(shared_ptr<std::ostream> stream);
     StreamLogger(std::ostream *stream);
+
+    StreamLogger(shared_ptr<std::ostream> stream, shared_ptr<LoggerDecoration> decoration);
+    StreamLogger(std::ostream *stream, LoggerDecoration *decoration);
+
     StreamLogger(StreamLogger *other);
     StreamLogger(shared_ptr<StreamLogger> other);
-    StreamLogger(TimedLogger *other);
-    StreamLogger(shared_ptr<TimedLogger> other);
+
+    StreamLogger(Logger *other);
+    StreamLogger(shared_ptr<Logger> other);
+
     virtual void write(shared_ptr<Level> level, const string &message) override;
 
     protected:
         shared_ptr<std::ostream> stream;
+        shared_ptr<LoggerDecoration> decoration;
 };
 
 struct StandardLogger : public StreamLogger {
     StandardLogger();
+
+    StandardLogger(LoggerDecoration *decoration);
+    StandardLogger(shared_ptr<LoggerDecoration> decoration);
+
     StandardLogger(StreamLogger *other);
     StandardLogger(shared_ptr<StreamLogger> other);
+
     virtual void write(shared_ptr<Level> level, const string &message) override;
 };
 
 struct ThreadLogger : public Logger {
     ThreadLogger() = delete;
+
     ThreadLogger(Logger *other);
     ThreadLogger(shared_ptr<Logger> other);
+
     ThreadLogger(ThreadLogger *other);
     ThreadLogger(shared_ptr<ThreadLogger> other);
+
     void write(shared_ptr<Level> level, const string &message) override;
     void set_min_level(shared_ptr<Level> level) override;
 
@@ -146,8 +175,9 @@ struct ThreadLogger : public Logger {
 struct BiLogger : public Logger {
     BiLogger(Logger *logger1, Logger *logger2);
     BiLogger(shared_ptr<Logger> logger1, shared_ptr<Logger> logger2);
-    BiLogger(TimedLogger *other) : Logger(other) {};
-    BiLogger(shared_ptr<Logger> other) : Logger(other) {};
+    BiLogger(BiLogger *logger);
+    BiLogger(shared_ptr<BiLogger> logger);
+
     void write(shared_ptr<Level> level, const string &message) override;
     void set_min_level(shared_ptr<Level> level) override;
 

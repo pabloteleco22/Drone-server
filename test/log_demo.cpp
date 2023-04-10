@@ -78,7 +78,7 @@ int main() {
     stream_logger->write(silence, "Silence message");
 
     cout << endl << "Thread standard logger" << endl;
-    shared_ptr<Logger> thread_standard_logger{shared_ptr<Logger>{new ThreadLogger{new StandardLogger}}};
+    shared_ptr<Logger> thread_standard_logger{shared_ptr<Logger>{new ThreadLogger{new StandardLogger{new TimedLoggerDecoration}}}};
 
     cout << "All levels" << endl;
     thread_standard_logger->write(level, "Level message");
@@ -120,7 +120,7 @@ int main() {
     thread_stream_logger->write(silence, "Silence message");
 
     cout << endl << "Bi logger" << endl;
-    shared_ptr<Logger> bi_logger{shared_ptr<Logger>{new BiLogger{new ThreadLogger{new StandardLogger},
+    shared_ptr<Logger> bi_logger{shared_ptr<Logger>{new BiLogger{new ThreadLogger{new StandardLogger{new HourLoggerDecoration}},
                                                         new ThreadLogger{new StreamLogger{new std::ofstream{"build/bilog_demo.log", std::ios::out}}}}}};
 
     bi_logger->write(info, "All levels");

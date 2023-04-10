@@ -21,8 +21,10 @@ using std::shared_ptr;
 // Constants
 const std::chrono::seconds max_waiting_time{30};
 const float takeoff_altitude{3.0F};
-const int64_t refresh_time{1L};
+const std::chrono::seconds refresh_time{1};
 const float reasonable_error{0.3};
+const float percentage_drones_required{66.7};
+const unsigned int max_attempts{0};
 
 // Process return code
 enum class ProRetCod : int {
@@ -54,7 +56,8 @@ struct SystemPlugins {
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 void wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
 
-shared_ptr<Logger> logger{new ThreadLogger{new StandardLogger}};
+shared_ptr<LoggerDecoration> logger_decoration{new HourLoggerDecoration};
+shared_ptr<Logger> logger{new ThreadLogger{new StandardLogger{logger_decoration}}};
 shared_ptr<Level> info{new Info};
 shared_ptr<Level> error{new Error};
 shared_ptr<Level> debug{new Debug};
@@ -120,9 +123,12 @@ int main(int argc, char *argv[]) {
 				exit(static_cast<int>(error_code));
 			}
 		});
+	float final_systems{static_cast<float>(expected_systems)};
 
 	for (auto &sp : system_plugins_list) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &operation_name, &mut, &sync_point, &error_code]() {
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &operation_name, &mut, &sync_point, &error_code, &final_systems]() {
+			const float expected_systems{final_systems};
+
 			// Sets the position packet sending rate
 			logger->write(info, "Setting rate in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
 
@@ -149,9 +155,10 @@ int main(int argc, char *argv[]) {
 			logger->write(info, "Checking system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
 
 			bool all_ok{sp.telemetry->health_all_ok()}; 
-			if (all_ok) {
-				logger->write(info, "All OK in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
-			} else {
+			unsigned int attempts{0};
+			while ((not all_ok) and (attempts < max_attempts)) {
+				++attempts;
+
 				logger->write(error, "Not all OK in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
 				Telemetry::Health health{sp.telemetry->health()};
 
@@ -165,13 +172,29 @@ int main(int argc, char *argv[]) {
 					"    is magnetometer calibration OK: " + string(health.is_magnetometer_calibration_ok ? "true" : "false")
 				);
 
-				mut.lock();
-				operation_ok = false;
-				error_code = ProRetCod::TELEMETRY_FAILURE;
-				mut.unlock();
+				std::this_thread::sleep_for(refresh_time);
+
+				all_ok = sp.telemetry->health_all_ok(); 
 			}
 
-			sync_point.arrive_and_wait();
+			if (all_ok) {
+				logger->write(info, "All OK in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+				sync_point.arrive_and_wait();
+			} else {
+				mut.lock();
+				--final_systems;
+				if ((100.0F * final_systems / static_cast<float>(expected_systems)) < percentage_drones_required) {
+					operation_ok = false;
+					error_code = ProRetCod::TELEMETRY_FAILURE;
+				}
+				mut.unlock();
+				logger->write(error, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " discarded");
+				sync_point.arrive_and_drop();
+				return;
+			}
+
+
+
 
 			// Set takeoff altitude
 			mut.lock();
@@ -252,7 +275,7 @@ int main(int argc, char *argv[]) {
 				float current_altitude{sp.telemetry->position().relative_altitude_m};
 				logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " altitude: " + std::to_string(current_altitude));
 				while ((std::isnan(current_altitude)) or (current_altitude < takeoff_altitude - reasonable_error)) {
-					std::this_thread::sleep_for(std::chrono::seconds{refresh_time});
+					std::this_thread::sleep_for(refresh_time);
 					current_altitude = sp.telemetry->position().relative_altitude_m;
 					logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " altitude: " + std::to_string(current_altitude));
 				}

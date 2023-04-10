@@ -1,5 +1,7 @@
 #include "log.hpp"
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 
 using std::cout;
 using std::endl;
@@ -39,9 +41,45 @@ bool Level::is_printable() const {
     return printable;
 }
 
+/** VoidLoggerDecoration **/
+string VoidLoggerDecoration::get_decoration() const {
+    return "";
+}
+
+/** TimedLoggerDecoration **/
+TimedLoggerDecoration::TimedLoggerDecoration() : LoggerDecoration() {
+    start_time = std::chrono::steady_clock::now();
+}
+
+TimedLoggerDecoration::TimedLoggerDecoration(TimedLoggerDecoration &other) : LoggerDecoration() {
+    start_time = other.start_time;
+}
+
+string TimedLoggerDecoration::get_decoration() const {
+    std::ostringstream os;
+    os << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start_time).count() << " | ";
+    
+    return os.str();
+}
+
+/** HourLoggerDecoration **/
+string HourLoggerDecoration::get_decoration() const {
+    std::ostringstream os;
+
+    std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+    std::time_t t_now = std::chrono::system_clock::to_time_t(now);
+    os << std::put_time(std::localtime(&t_now), "%T") << " | ";
+
+    return os.str();
+}
+
 /** Logger **/
 Logger::Logger() {
     min_level = std::make_shared<Level>(new Level);
+}
+
+Logger::Logger(Logger &other) {
+    min_level = other.min_level;
 }
 
 Logger::Logger(Logger *other) {
@@ -56,54 +94,55 @@ void Logger::set_min_level(std::shared_ptr<Level> level) {
     min_level = level;
 }
 
-/** TimedLogger **/
-TimedLogger::TimedLogger() : Logger() {
-    start_time = std::chrono::steady_clock::now();
-}
-
-TimedLogger::TimedLogger(TimedLogger *other) : Logger(other) {
-    start_time = other->start_time;
-}
-
-TimedLogger::TimedLogger(shared_ptr<TimedLogger> other) : Logger(other) {
-    start_time = other->start_time;
-}
-
-double TimedLogger::get_timestamp() const {
-    return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start_time).count();
-}
-
 /** StreamLogger **/
-StreamLogger::StreamLogger(shared_ptr<std::ostream> stream) : TimedLogger() {
+StreamLogger::StreamLogger(shared_ptr<std::ostream> stream) {
     this->stream = stream;
+    decoration = shared_ptr<LoggerDecoration>{new VoidLoggerDecoration};
 }
 
-StreamLogger::StreamLogger(std::ostream *stream) : TimedLogger() {
+StreamLogger::StreamLogger(std::ostream *stream) {
     this->stream = shared_ptr<std::ostream>{stream};
+    decoration = shared_ptr<LoggerDecoration>{new VoidLoggerDecoration};
 }
 
-StreamLogger::StreamLogger(StreamLogger *other) : TimedLogger(other) {
+StreamLogger::StreamLogger(shared_ptr<std::ostream> stream, shared_ptr<LoggerDecoration> decoration) : Logger() {
+    this->stream = stream;
+    this->decoration = shared_ptr<LoggerDecoration>{decoration};
+}
+
+StreamLogger::StreamLogger(std::ostream *stream, LoggerDecoration *decoration) : Logger() {
+    this->stream = shared_ptr<std::ostream>{stream};
+    this->decoration = shared_ptr<LoggerDecoration>{decoration};
+}
+
+StreamLogger::StreamLogger(StreamLogger *other) : Logger(other) {
     stream = other->stream;
 }
 
-StreamLogger::StreamLogger(shared_ptr<StreamLogger> other) : TimedLogger(other) {
+StreamLogger::StreamLogger(shared_ptr<StreamLogger> other) : Logger(other) {
     stream = other->stream;
 }
 
-StreamLogger::StreamLogger(TimedLogger *other) : TimedLogger(other) {}
+StreamLogger::StreamLogger(Logger *other) : Logger(other) {}
 
-StreamLogger::StreamLogger(shared_ptr<TimedLogger> other) : TimedLogger(other) {}
+StreamLogger::StreamLogger(shared_ptr<Logger> other) : Logger(other) {}
 
 void StreamLogger::write(std::shared_ptr<Level> level, const string &message) {
     if ((*level >= *min_level) and (level->is_printable())) {
         (*stream) << "["
-            << get_timestamp()
-            << " | " << level->get_level_name() << "] " << message << endl;
+            << decoration->get_decoration()
+            << level->get_level_name() << "] " << message << endl;
     }
 }
 
 /** StandardLogger **/
-StandardLogger::StandardLogger() : StreamLogger(std::shared_ptr<std::ostream>(&cout, [](void *) {})) {}
+StandardLogger::StandardLogger() : StreamLogger(shared_ptr<std::ostream>{&cout, [](void *) {}}) {}
+
+StandardLogger::StandardLogger(LoggerDecoration *decoration) : StreamLogger(shared_ptr<std::ostream>{&cout, [](void *) {}}) {
+    this->decoration = shared_ptr<LoggerDecoration>{decoration};
+}
+
+StandardLogger::StandardLogger(shared_ptr<LoggerDecoration> decoration) : StreamLogger(shared_ptr<std::ostream>{&cout, [](void *) {}}, decoration) {}
 
 StandardLogger::StandardLogger(StreamLogger *other) : StreamLogger(other) {
     stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
@@ -117,8 +156,8 @@ void StandardLogger::write(std::shared_ptr<Level> level, const string &message) 
     if ((*level >= *min_level) and (level->is_printable())) {
 
         (*stream) << level->get_color() << "["
-            << get_timestamp()
-            << " | " << level->get_level_name() << "]\033[0m " << message << endl;
+            << decoration->get_decoration()
+            << level->get_level_name() << "]\033[0m " << message << endl;
     }
 }
 
@@ -164,6 +203,16 @@ BiLogger::BiLogger(Logger *logger1, Logger *logger2) {
 BiLogger::BiLogger(shared_ptr<Logger> logger1, shared_ptr<Logger> logger2) {
     this->logger1 = logger1;
     this->logger2 = logger2;
+}
+
+BiLogger::BiLogger(BiLogger *logger) {
+    logger1 = logger->logger1;
+    logger2 = logger->logger2;
+}
+
+BiLogger::BiLogger(shared_ptr<BiLogger> logger) {
+    logger1 = logger->logger1;
+    logger2 = logger->logger2;
 }
 
 void BiLogger::write(std::shared_ptr<Level> level, const string &message) {
