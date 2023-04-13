@@ -3,15 +3,17 @@
 #include <mavsdk/plugins/telemetry/telemetry.h>
 #include <mavsdk/plugins/offboard/offboard.h>
 #include <mavsdk/log_callback.h>
+#include "lib/flag/flag.hpp"
+#include "lib/log/log.hpp"
+#include "lib/poly/polygon.hpp"
+#include "lib/missionhelper/missionhelper.hpp"
 #include <thread>
 #include <barrier>
 #include <chrono>
 #include <future>
-#include "lib/flag/flag.hpp"
 #include <string>
 #include <sstream>
 #include <fstream>
-#include "lib/log/log.hpp"
 
 #define UNUSED(x) (void)(x)
 
@@ -25,7 +27,7 @@ const float takeoff_altitude{3.0F};
 const std::chrono::seconds refresh_time{1};
 const float reasonable_error{0.3};
 const float percentage_drones_required{66};
-const unsigned int max_attempts{4};
+const unsigned int max_attempts{10};
 
 // Process return code
 enum class ProRetCod : int {
@@ -36,6 +38,7 @@ enum class ProRetCod : int {
 	TELEMETRY_FAILURE = 4,
 	ACTION_FAILURE = 5,
 	OFFBOARD_FAILURE = 6,
+	MISSION_FAILURE = 7,
 	UNKNOWN_ERROR = 255
 };
 
@@ -46,16 +49,45 @@ struct SystemPlugins {
 		telemetry = std::make_shared<Telemetry>(system);
 		action = std::make_shared<Action>(system);
 		offboard = std::make_shared<Offboard>(system);
+		mission = std::make_shared<Mission>(system);
 	}
 
 	shared_ptr<System> system;
 	shared_ptr<Telemetry> telemetry;
 	shared_ptr<Action> action;
 	shared_ptr<Offboard> offboard;
+	shared_ptr<Mission> mission;
+};
+
+struct CheckEnoughSystems {
+	virtual bool exists_enough_systems(const float number_of_systems) = 0;
+	virtual string get_status(const float number_of_systems) = 0;
+};
+
+struct PercentageCheck final : public CheckEnoughSystems {
+	PercentageCheck(const float expected_systems, const float percentage_drones_required=100.0f) {
+		this->expected_systems = expected_systems;
+		this->percentage_required = percentage_drones_required;
+		required_systems = expected_systems * percentage_drones_required / 100.0f;
+	}
+
+	bool exists_enough_systems(const float number_of_systems) override {
+		return number_of_systems >= required_systems;
+	}
+
+	string get_status(const float number_of_systems) override {
+		return "Required percentage " + std::to_string(percentage_required) + "%. Systems in use " +
+															std::to_string(100.0f * number_of_systems / expected_systems) + "%";
+	}
+
+	private:
+		float percentage_required;
+		float expected_systems;
+		float required_systems;
 };
 
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
-float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
+float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems, shared_ptr<CheckEnoughSystems> enough_systems);
 
 shared_ptr<LoggerDecoration> logger_decoration{new HourLoggerDecoration};
 shared_ptr<std::ostream> stream{new std::ofstream{"logs/last_execution.log"}};
@@ -93,12 +125,28 @@ int main(int argc, char *argv[]) {
 
 	Mavsdk mavsdk;
 
+
 	shared_ptr<Flag> flag{new RandomFlag{}};
+
+	shared_ptr<Polygon> search_area{new Polygon};
+	search_area->push_back({static_cast<double>(RandomFlag::default_east_m.get_min()), static_cast<double>(RandomFlag::default_north_m.get_min())});
+	search_area->push_back({static_cast<double>(RandomFlag::default_east_m.get_min()), static_cast<double>(RandomFlag::default_north_m.get_max())});
+	search_area->push_back({static_cast<double>(RandomFlag::default_east_m.get_max()), static_cast<double>(RandomFlag::default_north_m.get_max())});
+	search_area->push_back({static_cast<double>(RandomFlag::default_east_m.get_max()), static_cast<double>(RandomFlag::default_north_m.get_min())});
+
+	//search_area->push_back({0, 0});
+	//search_area->push_back({0, 10});
+	//search_area->push_back({10, 10});
+	//search_area->push_back({10, 0});
+
+	shared_ptr<MissionHelper> mission_helper{new ParallelSweep{search_area}};
 
 	logger->write(info, "The flag is in:\n" + static_cast<string>(*flag));
 
+	shared_ptr<CheckEnoughSystems> enough_systems{new PercentageCheck{static_cast<float>(expected_systems), percentage_drones_required}};
+
 	establish_connections(argc, argv, mavsdk);
-	float final_systems{wait_systems(mavsdk, expected_systems)};
+	float final_systems{wait_systems(mavsdk, expected_systems, enough_systems)};
 
 	vector<SystemPlugins> system_plugins_list{};
 
@@ -129,19 +177,21 @@ int main(int argc, char *argv[]) {
 		}};
 
 	for (auto &sp : system_plugins_list) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &operation_name, &mut, &sync_point, &error_code, &final_systems, &expected_systems]() {
-			const float expected_systems_float{static_cast<float>(expected_systems)};
+		threads_for_waiting.push_back(
+			std::make_unique<std::thread>(std::thread{
+				[sp, &operation_ok, &operation_name, &mut, &sync_point, &error_code, &final_systems, &mission_helper, &enough_systems]() {
+			unsigned int system_id{static_cast<unsigned int>(sp.system->get_system_id())};
 
 			// Sets the position packet sending rate
-			logger->write(info, "Setting rate in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+			logger->write(info, "Setting rate in system " + std::to_string(system_id));
 
 			Telemetry::Result telemetry_result{sp.telemetry->set_rate_position_velocity_ned(1.0)};
 			if (telemetry_result == Telemetry::Result::Success) {
-				logger->write(info, "Correctly set rate in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+				logger->write(info, "Correctly set rate in system " + std::to_string(system_id));
 			} else {
 				std::ostringstream os;
 				os << telemetry_result;
-				logger->write(error, "Failure to set rate in system " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ": " + os.str());
+				logger->write(error, "Failure to set rate in system " + std::to_string(system_id) + ": " + os.str());
 				mut.lock();
 				operation_ok = false;
 				error_code = ProRetCod::TELEMETRY_FAILURE;
@@ -155,17 +205,17 @@ int main(int argc, char *argv[]) {
 			operation_name = "check system health";
 			mut.unlock();
 
-			logger->write(info, "Checking system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+			logger->write(info, "Checking system " + std::to_string(system_id));
 
 			bool all_ok{sp.telemetry->health_all_ok()}; 
 			unsigned int attempts{max_attempts};
 			while ((not all_ok) and (attempts > 0)) {
 				--attempts;
 
-				logger->write(error, "Not all OK in system " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ". Remaining attempts: " + std::to_string(attempts));
+				logger->write(error, "Not all OK in system " + std::to_string(system_id) + ". Remaining attempts: " + std::to_string(attempts));
 				Telemetry::Health health{sp.telemetry->health()};
 
-				logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + "\n" +
+				logger->write(info, "System " + std::to_string(system_id) + "\n" +
 					"    is accelerometer calibration OK: " + string(health.is_accelerometer_calibration_ok ? "true" : "false") + "\n" +
 					"    is armable: " + string(health.is_armable ? "true" : "false") + "\n" +
 					"    is global position OK: " + string(health.is_global_position_ok ? "true" : "false") + "\n" +
@@ -181,37 +231,146 @@ int main(int argc, char *argv[]) {
 			}
 
 			if (all_ok) {
-				logger->write(info, "All OK in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+				logger->write(info, "All OK in system " + std::to_string(system_id));
 				sync_point.arrive_and_wait();
 			} else {
-				float percentage_remaining_systems;
 				mut.lock();
 				--final_systems;
-				percentage_remaining_systems = 100.0F * final_systems / expected_systems_float;
-				if (percentage_remaining_systems < percentage_drones_required) {
+				if (not enough_systems->exists_enough_systems(final_systems)) {
 					operation_ok = false;
 					error_code = ProRetCod::TELEMETRY_FAILURE;
 				}
 				mut.unlock();
-				logger->write(warning, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " discarded. Remaining " + std::to_string(percentage_remaining_systems) + "%");
+				logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
 				sync_point.arrive_and_drop();
 				return;
 			}
 
+			// Arming systems
+			mut.lock();
+			operation_name = "arm systems";
+			mut.unlock();
+
+			logger->write(info, "Arming system " + std::to_string(system_id));
+
+			Action::Result action_result{sp.action->arm()}; 
+			attempts = max_attempts;
+			while ((action_result != Action::Result::Success) and (attempts > 0)) {
+				--attempts;
+
+				std::ostringstream os;
+				os << action_result;
+				logger->write(error, "Error arming system " + std::to_string(system_id) + ": " + os.str());
+
+				std::this_thread::sleep_for(refresh_time);
+
+				action_result = sp.action->arm();
+			}
+
+			if (action_result == Action::Result::Success) {
+				logger->write(info, "System " + std::to_string(system_id) + " armed");
+				sync_point.arrive_and_wait();
+			} else {
+				mut.lock();
+				--final_systems;
+				if (not enough_systems->exists_enough_systems(final_systems)) {
+					operation_ok = false;
+					error_code = ProRetCod::ACTION_FAILURE;
+				}
+				mut.unlock();
+				logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
+				sync_point.arrive_and_drop();
+				return;
+			}
+
+			// Set mission plan
+			mut.lock();
+			operation_name = "set mission plan";
+			mut.unlock();
+
+			logger->write(info, "Uploading mission plan to system " + std::to_string(system_id));
+
+			vector<Mission::MissionItem> mission_item_vector;
+
+			try {
+				mission_helper->new_mission(system_id, final_systems, mission_item_vector);
+			} catch (const CannotMakeMission &e) {
+				if (std::string(e.what()) == "CannotMakeMission: The system ID must be less than or equal to the number of systems")
+					mission_helper->new_mission(final_systems, final_systems, mission_item_vector);
+			}
+
+			for (auto p : mission_item_vector) {
+				logger->write(debug, "System " + std::to_string(system_id) + " mission.\n    Latitude: " + std::to_string(p.latitude_deg) +
+				"\n    Longitude: " + std::to_string(p.longitude_deg));
+			}
+
+			Mission::MissionPlan mission_plan;
+			mission_plan.mission_items = mission_item_vector;
+
+			Mission::Result mission_result{sp.mission->upload_mission(mission_plan)};
+
+			while ((mission_result != Mission::Result::Success) and (attempts > 0)) {
+				--attempts;
+
+				std::ostringstream os;
+				os << mission_result;
+				logger->write(error, "Error uploading mission plan to system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
+
+				std::this_thread::sleep_for(refresh_time);
+
+				mission_result = sp.mission->upload_mission(mission_plan);
+			}
+
+			if (mission_result == Mission::Result::Success) {
+				logger->write(info, "Mission plan uploaded to system " + std::to_string(system_id));
+			} else {
+				std::ostringstream os;
+				os << mission_result;
+				logger->write(error, "Error uploading mission plan to system " + std::to_string(system_id) + ": " + os.str());
+
+				mut.lock();
+				operation_ok = false;
+				error_code = ProRetCod::MISSION_FAILURE;
+				mut.unlock();
+			}
+
+			sync_point.arrive_and_wait();
+
+			// Start mission
+			mut.lock();
+			operation_name = "start mission";
+			mut.unlock();
+
+			mission_result = sp.mission->start_mission();
+
+			if (mission_result == Mission::Result::Success) {
+				logger->write(info, "The mission has started correctly in system " + std::to_string(system_id));
+			} else {
+				std::ostringstream os;
+				os << mission_result;
+				logger->write(error, "Error starting mission on system " + std::to_string(system_id) + ": " + os.str());
+
+				mut.lock();
+				operation_ok = false;
+				error_code = ProRetCod::MISSION_FAILURE;
+				mut.unlock();
+			}
+
+			/*
 			// Set takeoff altitude
 			mut.lock();
 			operation_name = "set takeoff altitude";
 			mut.unlock();
 
-			logger->write(info, "Setting takeoff altitude of system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+			logger->write(info, "Setting takeoff altitude of system " + std::to_string(system_id));
 
 			Action::Result action_result{sp.action->set_takeoff_altitude(takeoff_altitude)}; 
 			if (action_result == Action::Result::Success) {
-				logger->write(info, "Takeoff altitude set on system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+				logger->write(info, "Takeoff altitude set on system " + std::to_string(system_id));
 			} else {
 				std::ostringstream os;
 				os << action_result;
-				logger->write(error, "Error setting takeoff altitude on system " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ": " + os.str());
+				logger->write(error, "Error setting takeoff altitude on system " + std::to_string(system_id) + ": " + os.str());
 
 				mut.lock();
 				operation_ok = false;
@@ -220,13 +379,15 @@ int main(int argc, char *argv[]) {
 			}
 
 			sync_point.arrive_and_wait();
+			*/
 
+			/*
 			// Arming systems
 			mut.lock();
 			operation_name = "arm systems";
 			mut.unlock();
 
-			logger->write(info, "Arming system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+			logger->write(info, "Arming system " + std::to_string(system_id));
 
 			action_result = sp.action->arm(); 
 			attempts = max_attempts;
@@ -235,7 +396,7 @@ int main(int argc, char *argv[]) {
 
 				std::ostringstream os;
 				os << action_result;
-				logger->write(error, "Error arming system " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ": " + os.str());
+				logger->write(error, "Error arming system " + std::to_string(system_id) + ": " + os.str());
 
 				std::this_thread::sleep_for(refresh_time);
 
@@ -243,7 +404,7 @@ int main(int argc, char *argv[]) {
 			}
 
 			if (action_result == Action::Result::Success) {
-				logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " armed");
+				logger->write(info, "System " + std::to_string(system_id) + " armed");
 				sync_point.arrive_and_wait();
 			} else {
 				float percentage_remaining_systems;
@@ -255,7 +416,7 @@ int main(int argc, char *argv[]) {
 					error_code = ProRetCod::ACTION_FAILURE;
 				}
 				mut.unlock();
-				logger->write(warning, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " discarded. Remaining " + std::to_string(percentage_remaining_systems) + "%");
+				logger->write(warning, "System " + std::to_string(system_id) + " discarded. Remaining " + std::to_string(percentage_remaining_systems) + "%");
 				sync_point.arrive_and_drop();
 				return;
 			}
@@ -265,11 +426,11 @@ int main(int argc, char *argv[]) {
 			operation_name = "take off";
 			mut.unlock();
 
-			logger->write(info, "Taking off system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+			logger->write(info, "Taking off system " + std::to_string(system_id));
 
 			action_result = sp.action->takeoff(); 
 			if (action_result == Action::Result::Success) {
-				logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " taking off");
+				logger->write(info, "System " + std::to_string(system_id) + " taking off");
 
 				// Waiting to finish takeoff
 				std::promise<void> prom;
@@ -283,7 +444,7 @@ int main(int argc, char *argv[]) {
 						float current_altitude{sp.telemetry->position().relative_altitude_m};
 						std::ostringstream os;
 						os << land_state;
-						logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " " + os.str() +
+						logger->write(debug, "System " + std::to_string(system_id) + " " + os.str() +
 																									" - Altitude: " + std::to_string(current_altitude));
 					}
 				});
@@ -292,7 +453,7 @@ int main(int argc, char *argv[]) {
 			} else {
 				std::ostringstream os;
 				os << action_result;
-				logger->write(error, "Error taking off system " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ": " + os.str());
+				logger->write(error, "Error taking off system " + std::to_string(system_id) + ": " + os.str());
 
 				mut.lock();
 				operation_ok = false;
@@ -307,16 +468,16 @@ int main(int argc, char *argv[]) {
 			operation_name = "set setpoint";
 			mut.unlock();
 
-			logger->write(info, "Setting setpoint on system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+			logger->write(info, "Setting setpoint on system " + std::to_string(system_id));
 
 			Offboard::PositionNedYaw expected_position_yaw{10.0f, 0.0f, -10.0f, 0.0f};
 			Offboard::Result offboard_result{sp.offboard->set_position_ned(expected_position_yaw)}; 
 			if (offboard_result == Offboard::Result::Success) {
-				logger->write(info, "Setpoint of system " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " set");
+				logger->write(info, "Setpoint of system " + std::to_string(system_id) + " set");
 			} else {
 				std::ostringstream os;
 				os << offboard_result;
-				logger->write(error, "Error setting setpoint on system " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ": " + os.str());
+				logger->write(error, "Error setting setpoint on system " + std::to_string(system_id) + ": " + os.str());
 
 				mut.lock();
 				operation_ok = false;
@@ -335,14 +496,14 @@ int main(int argc, char *argv[]) {
 			std::mutex waiting_mutex;
 			waiting_mutex.lock();
 
-			logger->write(info, "Starting offboard mode on system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
+			logger->write(info, "Starting offboard mode on system " + std::to_string(system_id));
 
 			offboard_result = sp.offboard->start();
 			if (offboard_result == Offboard::Result::Success) {
-				logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " in offboard mode");
+				logger->write(info, "System " + std::to_string(system_id) + " in offboard mode");
 
 				Telemetry::PositionVelocityNedHandle handle {sp.telemetry->subscribe_position_velocity_ned([&waiting_mutex, &expected_position, &handle, &sp](Telemetry::PositionVelocityNed pos) {
-					logger->write(debug, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " position & velocity:\n" +
+					logger->write(debug, "System " + std::to_string(system_id) + " position & velocity:\n" +
 						"Pos North: " + std::to_string(pos.position.north_m) + "\n" +
 						"Pos East: " + std::to_string(pos.position.east_m) + "\n" +
 						"Pos Down: " + std::to_string(pos.position.down_m) + "\n" +
@@ -359,7 +520,7 @@ int main(int argc, char *argv[]) {
 						(pos.position.north_m >= expected_position.north_m - reasonable_error)
 					) {
 						sp.telemetry->unsubscribe_position_velocity_ned(handle);
-						logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " has reached the target");
+						logger->write(info, "System " + std::to_string(system_id) + " has reached the target");
 						waiting_mutex.unlock();
 					}
 				})};
@@ -369,7 +530,7 @@ int main(int argc, char *argv[]) {
 			} else {
 				std::ostringstream os;
 				os << offboard_result;
-				logger->write(error, "Error starting offboard mode on system " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ": " + os.str());
+				logger->write(error, "Error starting offboard mode on system " + std::to_string(system_id) + ": " + os.str());
 
 				mut.lock();
 				operation_ok = false;
@@ -378,7 +539,9 @@ int main(int argc, char *argv[]) {
 			}
 
 			sync_point.arrive_and_wait();
+			*/
 
+			/*
 			// Hold position
 			mut.lock();
 			operation_name = "hold position";
@@ -386,17 +549,18 @@ int main(int argc, char *argv[]) {
 
 			action_result = sp.action->hold();
 			if (action_result == Action::Result::Success) {
-				logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " holding position");
+				logger->write(info, "System " + std::to_string(system_id) + " holding position");
 			} else {
 				std::ostringstream os;
 				os << action_result;
-				logger->write(error, "Error holding position on system " + std::to_string(static_cast<int>(sp.system->get_system_id())) + ": " + os.str());
+				logger->write(error, "Error holding position on system " + std::to_string(system_id) + ": " + os.str());
 
 				mut.lock();
 				operation_ok = false;
 				error_code = ProRetCod::ACTION_FAILURE;
 				mut.unlock();
 			}
+			*/
 		}}));
 	}
 
@@ -430,7 +594,7 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 	}
 }
 
-float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems) {
+float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems, shared_ptr<CheckEnoughSystems> enough_systems) {
 	vector<System>::size_type discovered_systems {mavsdk.systems().size()};
 
 	std::promise<void> prom{};
@@ -454,11 +618,11 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 	});
 	
 	if (fut.wait_for(max_waiting_time) != std::future_status::ready) {
-		const float percentage_systems_found{100.0F * static_cast<float>(discovered_systems) / static_cast<float>(expected_systems)};
+		logger->write(warning, "Not all systems found. " + enough_systems->get_status(static_cast<float>(discovered_systems)));
 
-		logger->write(warning, "Not all systems found: " + std::to_string(percentage_systems_found) + "%");
-
-		if (percentage_systems_found < percentage_drones_required) {
+		if (enough_systems->exists_enough_systems(discovered_systems)) {
+			logger->write(info, "Can continue");
+		} else {
 			logger->write(error, "Cannot continue");
 
 			exit(static_cast<int>(ProRetCod::NO_SYSTEMS_FOUND));

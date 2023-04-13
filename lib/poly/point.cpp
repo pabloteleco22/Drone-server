@@ -73,7 +73,11 @@ Point Point::abs() const {
     return Point{fabs(x), fabs(y)};
 }
 
-std::ostream& operator<<(std::ostream &out, const Point &v) {
+Point::operator std::string() const {
+    return "(" + std::to_string(x) + ", " + std::to_string(y) + ")";
+}
+
+std::ostream &operator<<(std::ostream &out, const Point &v) {
     out << "(" << v.x << ", " << v.y << ")";
     return out;
 }

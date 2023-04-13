@@ -159,6 +159,10 @@ Polygon::Polygon(const Points &p) {
     vertex = p;
 }
 
+Polygon::Polygon(const Polygon &p) {
+    vertex = p.vertex;
+}
+
 double Polygon::count_square_signed(void) const {
     size_t pointsCount{vertex.size()};
     if (pointsCount < 3) {

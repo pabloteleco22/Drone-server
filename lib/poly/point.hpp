@@ -2,6 +2,7 @@
 
 #include <ostream>
 #include <vector>
+#include <string>
 
 const double POLY_SPLIT_EPS = 1E-6;
 
@@ -24,6 +25,7 @@ struct Point {
     double distance(const Point &p) const;
     double square_distance(const Point &p) const;
     Point abs() const;
+    operator std::string() const;
     friend std::ostream& operator<<(std::ostream &out, const Point &v);
 };
 

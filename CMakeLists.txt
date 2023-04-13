@@ -66,6 +66,7 @@ add_executable(missionhelper_test
 target_link_libraries(missionhelper_test
     GTest::gtest_main
     MissionHelper
+    Poly
 )
 
 ##------------------ Log test ------------------##

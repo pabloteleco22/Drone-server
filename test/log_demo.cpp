@@ -99,7 +99,7 @@ int main() {
     thread_standard_logger->write(silence, "Silence message");
 
     shared_ptr<Logger> thread_stream_logger{shared_ptr<Logger>{new ThreadLogger{new StreamLogger{
-                                                        new std::ofstream{"logs/test/thread_log_demo.log", std::ios::out}}}}};
+                                                        new std::ofstream{"logs/test/thread_log_demo.log", std::ios::out}, new TimedLoggerDecoration}}}};
 
     thread_stream_logger->write(info, "All levels");
     thread_stream_logger->write(level, "Level message");
