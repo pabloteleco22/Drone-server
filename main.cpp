@@ -54,8 +54,35 @@ struct SystemPlugins {
 	shared_ptr<Offboard> offboard;
 };
 
+struct CheckEnoughSystems {
+	virtual bool exists_enough_systems(const float number_of_systems) = 0;
+	virtual string get_status(const float number_of_systems) = 0;
+};
+
+struct PercentageCheck final : public CheckEnoughSystems {
+	PercentageCheck(const float expected_systems, const float percentage_drones_required=100.0f) {
+		this->expected_systems = expected_systems;
+		this->percentage_required = percentage_drones_required;
+		required_systems = expected_systems * percentage_drones_required / 100.0f;
+	}
+
+	bool exists_enough_systems(const float number_of_systems) override {
+		return number_of_systems >= required_systems;
+	}
+
+	string get_status(const float number_of_systems) override {
+		return "Required percentage " + std::to_string(percentage_required) + "%. Systems in use " +
+														std::to_string(100.0f * number_of_systems / expected_systems) + "%";
+	}
+
+	private:
+			float percentage_required;
+			float expected_systems;
+			float required_systems;
+};
+
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
-float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems);
+float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems, shared_ptr<CheckEnoughSystems> enough_systems);
 
 shared_ptr<LoggerDecoration> logger_decoration{new HourLoggerDecoration};
 shared_ptr<std::ostream> stream{new std::ofstream{"logs/last_execution.log"}};
@@ -97,8 +124,10 @@ int main(int argc, char *argv[]) {
 
 	logger->write(info, "The flag is in:\n" + static_cast<string>(*flag));
 
+	shared_ptr<CheckEnoughSystems> enough_systems{new PercentageCheck{static_cast<float>(expected_systems), percentage_drones_required}};
+
 	establish_connections(argc, argv, mavsdk);
-	float final_systems{wait_systems(mavsdk, expected_systems)};
+	float final_systems{wait_systems(mavsdk, expected_systems, enough_systems)};
 
 	vector<SystemPlugins> system_plugins_list{};
 
@@ -129,9 +158,7 @@ int main(int argc, char *argv[]) {
 		}};
 
 	for (auto &sp : system_plugins_list) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &operation_name, &mut, &sync_point, &error_code, &final_systems, &expected_systems]() {
-			const float expected_systems_float{static_cast<float>(expected_systems)};
-
+		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{[sp, &operation_ok, &operation_name, &mut, &sync_point, &error_code, &final_systems, &enough_systems]() {
 			// Sets the position packet sending rate
 			logger->write(info, "Setting rate in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
 
@@ -184,16 +211,14 @@ int main(int argc, char *argv[]) {
 				logger->write(info, "All OK in system " + std::to_string(static_cast<int>(sp.system->get_system_id())));
 				sync_point.arrive_and_wait();
 			} else {
-				float percentage_remaining_systems;
 				mut.lock();
 				--final_systems;
-				percentage_remaining_systems = 100.0F * final_systems / expected_systems_float;
-				if (percentage_remaining_systems < percentage_drones_required) {
+				if (not enough_systems->exists_enough_systems(final_systems)) {
 					operation_ok = false;
 					error_code = ProRetCod::TELEMETRY_FAILURE;
 				}
+				logger->write(warning, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " discarded. " + enough_systems->get_status(final_systems));
 				mut.unlock();
-				logger->write(warning, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " discarded. Remaining " + std::to_string(percentage_remaining_systems) + "%");
 				sync_point.arrive_and_drop();
 				return;
 			}
@@ -246,16 +271,14 @@ int main(int argc, char *argv[]) {
 				logger->write(info, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " armed");
 				sync_point.arrive_and_wait();
 			} else {
-				float percentage_remaining_systems;
 				mut.lock();
 				--final_systems;
-				percentage_remaining_systems = 100.0F * final_systems / expected_systems_float;
-				if (percentage_remaining_systems < percentage_drones_required) {
+				if (not enough_systems->exists_enough_systems(final_systems)) {
 					operation_ok = false;
 					error_code = ProRetCod::ACTION_FAILURE;
 				}
+				logger->write(warning, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " discarded. " + enough_systems->get_status(final_systems));
 				mut.unlock();
-				logger->write(warning, "System " + std::to_string(static_cast<int>(sp.system->get_system_id())) + " discarded. Remaining " + std::to_string(percentage_remaining_systems) + "%");
 				sync_point.arrive_and_drop();
 				return;
 			}
@@ -430,7 +453,7 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 	}
 }
 
-float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems) {
+float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems, shared_ptr<CheckEnoughSystems> enough_systems) {
 	vector<System>::size_type discovered_systems {mavsdk.systems().size()};
 
 	std::promise<void> prom{};
@@ -454,11 +477,12 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 	});
 	
 	if (fut.wait_for(max_waiting_time) != std::future_status::ready) {
-		const float percentage_systems_found{100.0F * static_cast<float>(discovered_systems) / static_cast<float>(expected_systems)};
+		logger->write(warning, "Not all systems found. " + enough_systems->get_status(static_cast<float>(discovered_systems)));
+		
 
-		logger->write(warning, "Not all systems found: " + std::to_string(percentage_systems_found) + "%");
-
-		if (percentage_systems_found < percentage_drones_required) {
+		if (enough_systems->exists_enough_systems(discovered_systems)) {
+			logger->write(info, "Can continue");
+		} else {
 			logger->write(error, "Cannot continue");
 
 			exit(static_cast<int>(ProRetCod::NO_SYSTEMS_FOUND));
