@@ -783,7 +783,7 @@ TEST(PolygonTest, FindEmptyNearestPoint) {
     ASSERT_THROW(poly.find_nearest_point(point), Polygon::NotEnoughPointsException);
 }
 
-TEST(PolygonTest, FindCenter) {
+TEST(PolygonTest, FindCenter1) {
     Points points;
     points.push_back(Point{});
     points.push_back(Point{2, 0});
@@ -793,7 +793,20 @@ TEST(PolygonTest, FindCenter) {
 
     const Point expected_point{1, 1};
 
-    ASSERT_EQ(poly.count_center(), expected_point);
+    ASSERT_EQ(poly.find_center(), expected_point);
+}
+
+TEST(PolygonTest, FindCenter2) {
+    Points points;
+    points.push_back(Point{});
+    points.push_back(Point{0, 100});
+    points.push_back(Point{20, 100});
+    points.push_back(Point{20, 0});
+    const Polygon poly{points};
+
+    const Point expected_point{10, 50};
+
+    ASSERT_EQ(poly.find_center(), expected_point);
 }
 
 TEST(PolygonTest, FindCenterEmpty) {
@@ -802,7 +815,7 @@ TEST(PolygonTest, FindCenterEmpty) {
 
     const Point expected_point{};
 
-    ASSERT_THROW(poly.count_center(), Polygon::NotEnoughPointsException);
+    ASSERT_THROW(poly.find_center(), Polygon::NotEnoughPointsException);
 }
 
 TEST(PolygonTest, SplitNearestEdge) {

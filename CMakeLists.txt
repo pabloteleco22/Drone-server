@@ -20,6 +20,7 @@ add_subdirectory(lib/poly)
 # Finds MAVSDK when installed system wide.
 find_package(MAVSDK REQUIRED)
 
+#------------------- MAIN -------------------#
 # Specify your app's executable name, and list of source files used to create it.
 add_executable(drone_server
     main.cpp
@@ -32,6 +33,15 @@ target_link_libraries(drone_server
     Log
     Poly
     MissionHelper
+)
+
+#------------------- Prueba missions -------------------#
+add_executable(prueba
+    prueba.cpp
+)
+
+target_link_libraries(prueba
+    MAVSDK::mavsdk
 )
 
 #------------------- TEST -------------------#

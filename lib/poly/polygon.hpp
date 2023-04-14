@@ -74,7 +74,7 @@ public:
      * @throws
      * Polygon::VoidPolygonExcception: if the polygon contains no points.
     */
-    Point count_center(void) const;
+    Point find_center(void) const;
 
     /**
      * @brief Generates a new vertex in the polygon at the nearest point
@@ -104,7 +104,7 @@ public:
     */
     bool is_clockwise(void) const;
 
-    const Points get_vectors(void) const {
+    const Points get_vertex(void) const {
         return vertex;
     }
 

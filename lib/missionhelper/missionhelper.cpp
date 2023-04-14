@@ -57,9 +57,7 @@ void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int
 
     unsigned int n_iterations{(system_id < number_of_systems) ? system_id : (number_of_systems - 1)};
 
-
     for (unsigned int i = 0; i < n_iterations; ++i) {
-        std::cout << i << std::endl;
         if (not helper.split(partial_area, discarded_area, polygon_of_interest, cut_line)) {
             throw CannotMakeMission("Cannot split the required area");
         }
@@ -72,8 +70,16 @@ void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int
     else if (system_id == number_of_systems)
         polygon_of_interest = discarded_area;
 
-    mission.push_back(
-        MissionHelper::make_mission_item(polygon_of_interest.count_center().x, polygon_of_interest.count_center().y,
-        10.0f, 5.0f, false, 20.0f, 60.0f, Mission::MissionItem::CameraAction::None)
+    std::cout << polygon_of_interest.find_center().x << " " << polygon_of_interest.find_center().y << std::endl;
+
+    mission.push_back(MissionHelper::make_mission_item(
+        polygon_of_interest.find_center().x,
+        polygon_of_interest.find_center().y,
+        10.0f,
+        5.0f,
+        false,
+        20.0f,
+        60.0f,
+        Mission::MissionItem::CameraAction::None)
     );
 }

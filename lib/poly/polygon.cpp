@@ -306,7 +306,7 @@ Point Polygon::find_nearest_point(const Point &point) const {
     return result;
 }
 
-Point Polygon::count_center() const {
+Point Polygon::find_center() const {
     int n{static_cast<int>(vertex.size())};
     if (n <= 0)
         throw Polygon::NotEnoughPointsException{"The polygon has zero vertices"};

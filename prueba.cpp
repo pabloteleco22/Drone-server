@@ -179,11 +179,6 @@ int main(int argc, char** argv)
     mission_plan.mission_items = mission_items;
     const Mission::Result upload_result = mission.upload_mission(mission_plan);
 
-    if (upload_result != Mission::Result::Success) {
-        std::cerr << "Mission upload failed: " << upload_result << ", exiting.\n";
-        return 1;
-    }
-
     std::cout << "Arming...\n";
     const Action::Result arm_result = action.arm();
     if (arm_result != Action::Result::Success) {
@@ -191,6 +186,11 @@ int main(int argc, char** argv)
         return 1;
     }
     std::cout << "Armed.\n";
+
+    if (upload_result != Mission::Result::Success) {
+        std::cerr << "Mission upload failed: " << upload_result << ", exiting.\n";
+        return 1;
+    }
 
     std::atomic<bool> want_to_pause{false};
     // Before starting the mission, we want to be sure to subscribe to the mission progress.
