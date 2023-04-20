@@ -36,7 +36,12 @@ Mission::MissionItem MissionHelper::make_mission_item(
 }
 
 void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission) const {
-    double partial_area{area->count_square() / static_cast<double>(number_of_systems)};
+    const double scale{1024.0};
+    Polygon helper = *area;
+    for (size_t i = 0; i < helper.size(); ++i) {
+        helper[i] *= scale;
+    }
+    double partial_area{helper.count_square() / static_cast<double>(number_of_systems)};
 
     if (partial_area <= 0) {
         throw CannotMakeMission("The required area is zero or less");
@@ -51,7 +56,6 @@ void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int
     }
 
     Polygon polygon_of_interest;
-    Polygon helper = *area;
     Polygon discarded_area;
     Segment cut_line;
 
@@ -65,16 +69,22 @@ void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int
         helper = discarded_area;
     }
 
-    if (number_of_systems == 1)
+    if (number_of_systems == 1) {
         polygon_of_interest = *area;
-    else if (system_id == number_of_systems)
-        polygon_of_interest = discarded_area;
+    } else {
+        if (system_id == number_of_systems) 
+            polygon_of_interest = discarded_area;
 
-    std::cout << polygon_of_interest.find_center().x << " " << polygon_of_interest.find_center().y << std::endl;
+        for (size_t i = 0; i < polygon_of_interest.size(); ++i) {
+            polygon_of_interest[i] /= scale;
+        }
+    }
 
     mission.push_back(MissionHelper::make_mission_item(
         polygon_of_interest.find_center().x,
         polygon_of_interest.find_center().y,
+        //47.398170327054473,
+        //8.5456490218639658,
         10.0f,
         5.0f,
         false,

@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 
-const double POLY_SPLIT_EPS = 1E-6;
+const double POLY_SPLIT_EPS{1E-6};
 
 struct Point {
     double x, y;

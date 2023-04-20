@@ -35,15 +35,6 @@ target_link_libraries(drone_server
     MissionHelper
 )
 
-#------------------- Prueba missions -------------------#
-add_executable(prueba
-    prueba.cpp
-)
-
-target_link_libraries(prueba
-    MAVSDK::mavsdk
-)
-
 #------------------- TEST -------------------#
 include(FetchContent)
 FetchContent_Declare(

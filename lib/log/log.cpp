@@ -95,37 +95,51 @@ void Logger::set_min_level(std::shared_ptr<Level> level) {
 }
 
 /** StreamLogger **/
-StreamLogger::StreamLogger(shared_ptr<std::ostream> stream) {
+StreamLogger::StreamLogger(shared_ptr<std::ostream> stream, const bool greet) {
     this->stream = stream;
     decoration = shared_ptr<LoggerDecoration>{new VoidLoggerDecoration};
+
+    if (greet)
+        greeting();
 }
 
-StreamLogger::StreamLogger(std::ostream *stream) {
+StreamLogger::StreamLogger(std::ostream *stream, const bool greet) {
     this->stream = shared_ptr<std::ostream>{stream};
     decoration = shared_ptr<LoggerDecoration>{new VoidLoggerDecoration};
+
+    if (greet)
+        greeting();
 }
 
-StreamLogger::StreamLogger(shared_ptr<std::ostream> stream, shared_ptr<LoggerDecoration> decoration) : Logger() {
+StreamLogger::StreamLogger(shared_ptr<std::ostream> stream, shared_ptr<LoggerDecoration> decoration, const bool greet) : Logger() {
     this->stream = stream;
     this->decoration = shared_ptr<LoggerDecoration>{decoration};
+
+    if (greet)
+        greeting();
 }
 
-StreamLogger::StreamLogger(std::ostream *stream, LoggerDecoration *decoration) : Logger() {
+StreamLogger::StreamLogger(std::ostream *stream, LoggerDecoration *decoration, const bool greet) : Logger() {
     this->stream = shared_ptr<std::ostream>{stream};
     this->decoration = shared_ptr<LoggerDecoration>{decoration};
+
+    if (greet)
+        greeting();
 }
 
-StreamLogger::StreamLogger(StreamLogger *other) : Logger(other) {
+StreamLogger::StreamLogger(StreamLogger *other, const bool greet) : Logger(other) {
     stream = other->stream;
+
+    if (greet)
+        greeting();
 }
 
-StreamLogger::StreamLogger(shared_ptr<StreamLogger> other) : Logger(other) {
+StreamLogger::StreamLogger(shared_ptr<StreamLogger> other, const bool greet) : Logger(other) {
     stream = other->stream;
+
+    if (greet)
+        greeting();
 }
-
-StreamLogger::StreamLogger(Logger *other) : Logger(other) {}
-
-StreamLogger::StreamLogger(shared_ptr<Logger> other) : Logger(other) {}
 
 void StreamLogger::write(std::shared_ptr<Level> level, const string &message) {
     if ((*level >= *min_level) and (level->is_printable())) {
@@ -135,30 +149,60 @@ void StreamLogger::write(std::shared_ptr<Level> level, const string &message) {
     }
 }
 
+void StreamLogger::greeting() const {
+    shared_ptr<Level> level{new Greeting};
+
+    (*stream) << "["
+        << decoration->get_decoration()
+        << level->get_level_name() << "] " << "Starting stream logger" << endl;
+}
+
 /** StandardLogger **/
-StandardLogger::StandardLogger() : StreamLogger(shared_ptr<std::ostream>{&cout, [](void *) {}}) {}
+StandardLogger::StandardLogger(const bool greet) : StreamLogger(shared_ptr<std::ostream>{&cout, [](void *) {}}, false) {
+    if (greet)
+        greeting();
+}
 
-StandardLogger::StandardLogger(LoggerDecoration *decoration) : StreamLogger(shared_ptr<std::ostream>{&cout, [](void *) {}}) {
+StandardLogger::StandardLogger(LoggerDecoration *decoration, const bool greet) : StreamLogger(shared_ptr<std::ostream>{&cout, [](void *) {}}, false) {
     this->decoration = shared_ptr<LoggerDecoration>{decoration};
+
+    if (greet)
+        greeting();
 }
 
-StandardLogger::StandardLogger(shared_ptr<LoggerDecoration> decoration) : StreamLogger(shared_ptr<std::ostream>{&cout, [](void *) {}}, decoration) {}
-
-StandardLogger::StandardLogger(StreamLogger *other) : StreamLogger(other) {
-    stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
+StandardLogger::StandardLogger(shared_ptr<LoggerDecoration> decoration, const bool greet) : StreamLogger(shared_ptr<std::ostream>{&cout, [](void *) {}}, decoration, false) {
+    if (greet)
+        greeting();
 }
 
-StandardLogger::StandardLogger(shared_ptr<StreamLogger> other) : StreamLogger(other) {
+StandardLogger::StandardLogger(StreamLogger *other, const bool greet) : StreamLogger(other, false) {
     stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
+
+    if (greet)
+        greeting();
+}
+
+StandardLogger::StandardLogger(shared_ptr<StreamLogger> other, const bool greet) : StreamLogger(other, false) {
+    stream = std::shared_ptr<std::ostream>(&cout, [](void *) {});
+
+    if (greet)
+        greeting();
 }
 
 void StandardLogger::write(std::shared_ptr<Level> level, const string &message) {
     if ((*level >= *min_level) and (level->is_printable())) {
-
         (*stream) << level->get_color() << "["
             << decoration->get_decoration()
             << level->get_level_name() << "]\033[0m " << message << endl;
     }
+}
+
+void StandardLogger::greeting() const {
+    shared_ptr<Level> level{new Greeting};
+    
+    (*stream) << level->get_color() << "["
+        << decoration->get_decoration()
+        << level->get_level_name() << "]\033[0m " << "Starting standard logger" << endl;
 }
 
 /** ThreadLogger **/

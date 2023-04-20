@@ -15,9 +15,8 @@ int main() {
     shared_ptr<Level> error{shared_ptr<Level>(new Error)};
     shared_ptr<Level> silence{shared_ptr<Level>(new Silence)};
 
-    shared_ptr<Logger> standard_logger{shared_ptr<Logger>{new StandardLogger}};
-
     cout << "Standard logger" << endl;
+    shared_ptr<Logger> standard_logger{shared_ptr<Logger>{new StandardLogger}};
     cout << "All levels" << endl;
     standard_logger->write(level, "Level message");
     standard_logger->write(debug, "Debug message");
@@ -36,9 +35,8 @@ int main() {
     standard_logger->write(error, "Error message");
     standard_logger->write(silence, "Silence message");
 
-    shared_ptr<Logger> standard_stream_logger{shared_ptr<Logger>{new StreamLogger{shared_ptr<std::ostream>(&cout, [](void *) {})}}};
-
     cout << endl << "Standard stream logger" << endl;
+    shared_ptr<Logger> standard_stream_logger{shared_ptr<Logger>{new StreamLogger{shared_ptr<std::ostream>(&cout, [](void *) {})}}};
     cout << "All levels" << endl;
     standard_stream_logger->write(level, "Level message");
     standard_stream_logger->write(debug, "Debug message");
@@ -58,7 +56,6 @@ int main() {
     standard_stream_logger->write(silence, "Silence message");
 
     shared_ptr<Logger> stream_logger{shared_ptr<Logger>{new StreamLogger{new std::ofstream{"logs/test/log_demo.log", std::ios::out}}}};
-
     stream_logger->write(info, "All levels");
     stream_logger->write(level, "Level message");
     stream_logger->write(debug, "Debug message");

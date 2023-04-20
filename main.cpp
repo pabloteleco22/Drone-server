@@ -14,6 +14,7 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <geometry.h>
 
 #define UNUSED(x) (void)(x)
 
@@ -27,7 +28,7 @@ const float takeoff_altitude{3.0f};
 const std::chrono::seconds refresh_time{1};
 const float reasonable_error{0.3f};
 const float percentage_drones_required{66.0f};
-const unsigned int max_attempts{9};
+const unsigned int max_attempts{10};
 // Process return code
 enum class ProRetCod : int {
 	OK = 0,
@@ -39,23 +40,6 @@ enum class ProRetCod : int {
 	OFFBOARD_FAILURE = 6,
 	MISSION_FAILURE = 7,
 	UNKNOWN_ERROR = 255
-};
-
-// Struct to save a system and its telemetry and action objects
-struct SystemPlugins {
-	SystemPlugins(shared_ptr<System> system) {
-		this->system = system;
-		telemetry = std::make_shared<Telemetry>(system);
-		action = std::make_shared<Action>(system);
-		offboard = std::make_shared<Offboard>(system);
-		mission = std::make_shared<Mission>(system);
-	}
-
-	shared_ptr<System> system;
-	shared_ptr<Telemetry> telemetry;
-	shared_ptr<Action> action;
-	shared_ptr<Offboard> offboard;
-	shared_ptr<Mission> mission;
 };
 
 struct CheckEnoughSystems {
@@ -91,7 +75,10 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 shared_ptr<LoggerDecoration> logger_decoration{new HourLoggerDecoration};
 shared_ptr<Logger> logger{new BiLogger{
 	new ThreadLogger{new StandardLogger{logger_decoration}},
-	new ThreadLogger{new StreamLogger{std::make_shared<std::ofstream>("logs/last_execution.log"), logger_decoration}}
+	new BiLogger{
+		new ThreadLogger{new StreamLogger{std::make_shared<std::ofstream>("logs/last_execution.log"), logger_decoration}},
+		new ThreadLogger{new StreamLogger{std::make_shared<std::ofstream>("logs/history.log", std::ios_base::app), logger_decoration}}
+	}
 }};
 shared_ptr<Level> error{new Error};
 shared_ptr<Level> warning{new Warning};
@@ -127,6 +114,8 @@ int main(int argc, char *argv[]) {
 	Mavsdk mavsdk;
 
 	//shared_ptr<Flag> flag{new RandomFlag{}};
+	geometry::CoordinateTransformation coordinate_transformation{{47.3978409, 8.5456286}};
+	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
 	shared_ptr<Flag> flag{new FixedFlag{}};
 
 	shared_ptr<Polygon> search_area{new Polygon};
@@ -134,10 +123,19 @@ int main(int argc, char *argv[]) {
 	//search_area->push_back({static_cast<double>(RandomFlag::default_east_m.get_min()), static_cast<double>(RandomFlag::default_north_m.get_max())});
 	//search_area->push_back({static_cast<double>(RandomFlag::default_east_m.get_max()), static_cast<double>(RandomFlag::default_north_m.get_max())});
 	//search_area->push_back({static_cast<double>(RandomFlag::default_east_m.get_max()), static_cast<double>(RandomFlag::default_north_m.get_min())});
-	search_area->push_back({0, 0});
-	search_area->push_back({0, 90});
-	search_area->push_back({20, 90});
-	search_area->push_back({20, 0});
+	global_coordinate = coordinate_transformation.global_from_local({0, 0});
+	search_area->push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({0, 90});
+	search_area->push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({20, 90});
+	search_area->push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({20, 0});
+	search_area->push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+
+	logger->write(debug, "Search area:");
+	for (auto v : search_area->get_vertex()) {
+		logger->write(debug, "    " + static_cast<string>(v));
+	}
 
 	shared_ptr<MissionHelper> mission_helper{new ParallelSweep{search_area}};
 
@@ -148,7 +146,7 @@ int main(int argc, char *argv[]) {
 	establish_connections(argc, argv, mavsdk);
 	float final_systems{wait_systems(mavsdk, expected_systems, enough_systems)};
 
-	vector<SystemPlugins> system_plugins_list{};
+	vector<shared_ptr<System>> system_list{};
 
 	for (shared_ptr<System> s : mavsdk.systems()) {
 		logger->write(debug, "System: " + std::to_string(static_cast<int>(s->get_system_id())) + "\n" +
@@ -156,7 +154,7 @@ int main(int argc, char *argv[]) {
 			"    Has autopilot: " + string((s->has_autopilot()) ? "true" : "false") + "\n"
 		);
 
-		system_plugins_list.push_back(SystemPlugins(s));
+		system_list.push_back(s);
 	}
 
 	vector<shared_ptr<std::thread>> threads_for_waiting{};
@@ -176,10 +174,13 @@ int main(int argc, char *argv[]) {
 		}
 	}};
 
-	for (auto &sp : system_plugins_list) {
+	for (shared_ptr<System> system : system_list) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(std::thread{
-			[sp, &operation_ok, &operation_name, &mut, &sync_point, &error_code, &final_systems, &mission_helper, &enough_systems]() {
-				unsigned int system_id{static_cast<unsigned int>(sp.system->get_system_id())};
+			[system, &operation_ok, &operation_name, &mut, &sync_point, &error_code, &final_systems, &mission_helper, &enough_systems]() {
+				unsigned int system_id{static_cast<unsigned int>(system->get_system_id())};
+				Telemetry telemetry{system};
+				Action action{system};
+				Mission mission{system};
 
 				// Check the health of all systems
 				mut.lock();
@@ -188,13 +189,13 @@ int main(int argc, char *argv[]) {
 
 				logger->write(info, "Checking system " + std::to_string(system_id));
 
-				bool all_ok{sp.telemetry->health_all_ok()}; 
+				bool all_ok{telemetry.health_all_ok()}; 
 				unsigned int attempts{max_attempts};
 				while ((not all_ok) and (attempts > 0)) {
 					--attempts;
 
 					logger->write(error, "Not all OK in system " + std::to_string(system_id) + ". Remaining attempts: " + std::to_string(attempts));
-					Telemetry::Health health{sp.telemetry->health()};
+					Telemetry::Health health{telemetry.health()};
 
 					logger->write(info, "System " + std::to_string(system_id) + "\n" +
 						"    is accelerometer calibration OK: " + string(health.is_accelerometer_calibration_ok ? "true" : "false") + "\n" +
@@ -208,7 +209,7 @@ int main(int argc, char *argv[]) {
 
 					std::this_thread::sleep_for(refresh_time);
 
-					all_ok = sp.telemetry->health_all_ok(); 
+					all_ok = telemetry.health_all_ok(); 
 				}
 
 				if (all_ok) {
@@ -227,36 +228,36 @@ int main(int argc, char *argv[]) {
 					return;
 				}
 
-				// Arming systems
+				// Clear existing missions
 				mut.lock();
-				operation_name = "arm systems";
+				operation_name = "clear existing missions";
 				mut.unlock();
 
-				logger->write(info, "Arming system " + std::to_string(system_id));
+				logger->write(info, "System " + std::to_string(system_id) + " clearing existing missions");
 
-				Action::Result action_result{sp.action->arm()}; 
+				Mission::Result mission_result{mission.clear_mission()}; 
 				attempts = max_attempts;
-				while ((action_result != Action::Result::Success) and (attempts > 0)) {
+				while ((mission_result != Mission::Result::Success) and (attempts > 0)) {
 					--attempts;
 
 					std::ostringstream os;
-					os << action_result;
-					logger->write(error, "Error arming system " + std::to_string(system_id) + ": " + os.str());
+					os << mission_result;
+					logger->write(error, "Error clearing existing missions on system " + std::to_string(system_id) + ": " + os.str());
 
 					std::this_thread::sleep_for(refresh_time);
 
-					action_result = sp.action->arm();
+					mission_result = mission.clear_mission(); 
 				}
 
-				if (action_result == Action::Result::Success) {
-					logger->write(info, "System " + std::to_string(system_id) + " armed");
+				if (mission_result == Mission::Result::Success) {
+					logger->write(info, "System " + std::to_string(system_id) + " clean");
 					sync_point.arrive_and_wait();
 				} else {
 					mut.lock();
 					--final_systems;
 					if (not enough_systems->exists_enough_systems(final_systems)) {
 						operation_ok = false;
-						error_code = ProRetCod::ACTION_FAILURE;
+						error_code = ProRetCod::MISSION_FAILURE;
 					}
 					mut.unlock();
 					logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
@@ -264,20 +265,63 @@ int main(int argc, char *argv[]) {
 					return;
 				}
 
-				// Set mission plan
+				// Set return to launch after mission true
 				mut.lock();
-				operation_name = "set mission plan";
+				operation_name = "set return to launch after mission true";
 				mut.unlock();
 
-				logger->write(info, "Uploading mission plan to system " + std::to_string(system_id));
+				logger->write(info, "System " + std::to_string(system_id) + " set return to launch after mission true");
+
+				mission_result = mission.set_return_to_launch_after_mission(true); 
+				attempts = max_attempts;
+				while ((mission_result != Mission::Result::Success) and (attempts > 0)) {
+					--attempts;
+
+					std::ostringstream os;
+					os << mission_result;
+					logger->write(error, "Error in setting the return to launch after mission on system " + std::to_string(system_id) + ": " + os.str());
+
+					std::this_thread::sleep_for(refresh_time);
+
+					mission_result = mission.set_return_to_launch_after_mission(true); 
+				}
+
+				if (mission_result == Mission::Result::Success) {
+					logger->write(info, "System " + std::to_string(system_id) + " ready");
+					sync_point.arrive_and_wait();
+				} else {
+					mut.lock();
+					--final_systems;
+					if (not enough_systems->exists_enough_systems(final_systems)) {
+						operation_ok = false;
+						error_code = ProRetCod::MISSION_FAILURE;
+					}
+					mut.unlock();
+					logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
+					sync_point.arrive_and_drop();
+					return;
+				}
+
+				// Make mission plan
+				mut.lock();
+				operation_name = "make mission plan";
+				mut.unlock();
 
 				vector<Mission::MissionItem> mission_item_vector;
 
 				try {
 					mission_helper->new_mission(system_id, final_systems, mission_item_vector);
 				} catch (const CannotMakeMission &e) {
-					if (std::string(e.what()) == "CannotMakeMission: The system ID must be less than or equal to the number of systems")
+					if (std::string(e.what()) == "CannotMakeMission: The system ID must be less than or equal to the number of systems") {
 						mission_helper->new_mission(final_systems, final_systems, mission_item_vector);
+					} else {
+						logger->write(error, "System " + std::to_string(system_id) + " cannot make a mission: " + e.what());
+
+						mut.lock();
+						operation_ok = false;
+						error_code = ProRetCod::ACTION_FAILURE;
+						mut.unlock();
+					}
 				}
 
 				for (auto p : mission_item_vector) {
@@ -288,7 +332,18 @@ int main(int argc, char *argv[]) {
 				Mission::MissionPlan mission_plan;
 				mission_plan.mission_items = mission_item_vector;
 
-				Mission::Result mission_result{sp.mission->upload_mission(mission_plan)};
+				sync_point.arrive_and_wait();
+
+				// Set mission plan
+				mut.lock();
+				operation_name = "set mission plan";
+				mut.unlock();
+
+				logger->write(info, "Uploading mission plan to system " + std::to_string(system_id));
+
+				mut.lock();
+				mission_result = mission.upload_mission(mission_plan);
+				mut.unlock();
 
 				while ((mission_result != Mission::Result::Success) and (attempts > 0)) {
 					--attempts;
@@ -299,7 +354,9 @@ int main(int argc, char *argv[]) {
 
 					std::this_thread::sleep_for(refresh_time);
 
-					mission_result = sp.mission->upload_mission(mission_plan);
+					mut.lock();
+					mission_result = mission.upload_mission(mission_plan);
+					mut.unlock();
 				}
 
 				if (mission_result == Mission::Result::Success) {
@@ -317,12 +374,46 @@ int main(int argc, char *argv[]) {
 
 				sync_point.arrive_and_wait();
 
+				// Arming systems
+				mut.lock();
+				operation_name = "arm systems";
+				mut.unlock();
+
+				logger->write(info, "Arming system " + std::to_string(system_id));
+
+				Action::Result action_result{action.arm()}; 
+				attempts = max_attempts;
+				while ((action_result != Action::Result::Success) and (attempts > 0)) {
+					--attempts;
+
+					std::ostringstream os;
+					os << action_result;
+					logger->write(error, "Error arming system " + std::to_string(system_id) + ": " + os.str());
+
+					std::this_thread::sleep_for(refresh_time);
+
+					action_result = action.arm();
+				}
+
+				if (action_result == Action::Result::Success) {
+					logger->write(info, "System " + std::to_string(system_id) + " armed");
+				} else {
+					mut.lock();
+					operation_ok = false;
+					error_code = ProRetCod::ACTION_FAILURE;
+					mut.unlock();
+					logger->write(warning, "System " + std::to_string(system_id) + " cannot be armed");
+					return;
+				}
+
+				sync_point.arrive_and_wait();
+				
 				// Start mission
 				mut.lock();
 				operation_name = "start mission";
 				mut.unlock();
 
-				mission_result = sp.mission->start_mission();
+				mission_result = mission.start_mission();
 
 				attempts = max_attempts;
 				while ((mission_result != Mission::Result::Success) and (attempts > 0)) {
@@ -335,7 +426,7 @@ int main(int argc, char *argv[]) {
 
 					std::this_thread::sleep_for(refresh_time);
 					
-					mission_result = sp.mission->start_mission();
+					mission_result = mission.start_mission();
 				}
 
 				if (mission_result == Mission::Result::Success) {
@@ -361,13 +452,11 @@ int main(int argc, char *argv[]) {
 				std::promise<void> prom;
 				std::future fut{prom.get_future()};
 
-				Mission::MissionProgressHandle mission_progress_handle{sp.mission->subscribe_mission_progress([&prom, &mission_progress_handle, &sp](Mission::MissionProgress mis_prog) {
-					std::stringstream os;
-					os << mis_prog;
-					logger->write(info, "Mission status: " + os.str());
+				Mission::MissionProgressHandle mission_progress_handle{mission.subscribe_mission_progress([&prom, &mission_progress_handle, &mission](Mission::MissionProgress mis_prog) {
+					logger->write(info, "Mission status: " + std::to_string(mis_prog.current) + "/" + std::to_string(mis_prog.total));
 
 					if (mis_prog.current == mis_prog.total) {
-						sp.mission->unsubscribe_mission_progress(mission_progress_handle);
+						mission.unsubscribe_mission_progress(mission_progress_handle);
 						prom.set_value();
 					}
 				})};

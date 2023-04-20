@@ -124,35 +124,48 @@ struct Logger {
 struct StreamLogger : public Logger {
     StreamLogger() = delete;
 
-    StreamLogger(shared_ptr<std::ostream> stream);
-    StreamLogger(std::ostream *stream);
+    StreamLogger(shared_ptr<std::ostream> stream, const bool greet=true);
+    StreamLogger(std::ostream *stream, const bool greet=true);
 
-    StreamLogger(shared_ptr<std::ostream> stream, shared_ptr<LoggerDecoration> decoration);
-    StreamLogger(std::ostream *stream, LoggerDecoration *decoration);
+    StreamLogger(shared_ptr<std::ostream> stream, shared_ptr<LoggerDecoration> decoration, const bool greet=true);
+    StreamLogger(std::ostream *stream, LoggerDecoration *decoration, const bool greet=true);
 
-    StreamLogger(StreamLogger *other);
-    StreamLogger(shared_ptr<StreamLogger> other);
-
-    StreamLogger(Logger *other);
-    StreamLogger(shared_ptr<Logger> other);
+    StreamLogger(StreamLogger *other, const bool greet=true);
+    StreamLogger(shared_ptr<StreamLogger> other, const bool greet=true);
 
     virtual void write(shared_ptr<Level> level, const string &message) override;
 
     protected:
+        struct Greeting : public Level {
+            using Level::Level;
+            using Level::operator>=;
+            using Level::operator>;
+            Greeting() {
+                level_number = 230;
+                color = "\033[1;104m";
+                level_name = "Greeting";
+                printable = true;
+            }
+        };
+
         shared_ptr<std::ostream> stream;
         shared_ptr<LoggerDecoration> decoration;
+        virtual void greeting() const;
 };
 
 struct StandardLogger : public StreamLogger {
-    StandardLogger();
+    StandardLogger(const bool greet=true);
 
-    StandardLogger(LoggerDecoration *decoration);
-    StandardLogger(shared_ptr<LoggerDecoration> decoration);
+    StandardLogger(LoggerDecoration *decoration, const bool greet=true);
+    StandardLogger(shared_ptr<LoggerDecoration> decoration, const bool greet=true);
 
-    StandardLogger(StreamLogger *other);
-    StandardLogger(shared_ptr<StreamLogger> other);
+    StandardLogger(StreamLogger *other, const bool greet=true);
+    StandardLogger(shared_ptr<StreamLogger> other, const bool greet=true);
 
     virtual void write(shared_ptr<Level> level, const string &message) override;
+    
+    protected:
+        void greeting() const override;
 };
 
 struct ThreadLogger : public Logger {
