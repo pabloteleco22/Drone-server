@@ -410,8 +410,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 		"\n    Longitude: " + std::to_string(p.longitude_deg));
 	}
 
-	Mission::MissionPlan mission_plan;
-	mission_plan.mission_items = mission_item_vector;
+	Mission::MissionPlan mission_plan{mission_item_vector};
 
 	sync_point.arrive_and_wait();
 

@@ -1,6 +1,5 @@
 #include "flag.hpp"
 
-#include <stdlib.h>
 #include <time.h>
 
 RandomFlag::MaxMin::MaxMin(int n1, int n2) {
