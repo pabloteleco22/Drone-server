@@ -19,6 +19,7 @@
 #define UNUSED(x) (void)(x)
 
 using namespace mavsdk;
+using namespace simple_logger;
 using std::vector;
 using std::shared_ptr;
 
@@ -76,18 +77,12 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 							std::barrier<std::function<void()>> &sync_point, ProRetCod &error_code, float &final_systems,
 							shared_ptr<MissionHelper> mission_helper, shared_ptr<CheckEnoughSystems> enough_systems);
 
-shared_ptr<LoggerDecoration> logger_decoration{new HourLoggerDecoration};
-shared_ptr<Logger> logger{new BiLogger{
-	new ThreadLogger{new StandardLogger{logger_decoration}},
-	new BiLogger{
-		new ThreadLogger{new StreamLogger{std::make_shared<std::ofstream>("logs/last_execution.log"), logger_decoration}},
-		new ThreadLogger{new StreamLogger{std::make_shared<std::ofstream>("logs/history.log", std::ios_base::app), logger_decoration}}
-	}
-}};
-shared_ptr<Level> error{new Error};
-shared_ptr<Level> warning{new Warning};
-shared_ptr<Level> info{new Info};
-shared_ptr<Level> debug{new Debug};
+shared_ptr<Logger> logger;
+
+Error error;
+Warning warning;
+Info info;
+Debug debug;
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
@@ -96,7 +91,20 @@ int main(int argc, char *argv[]) {
 		exit(static_cast<int>(ProRetCod::BAD_ARGUMENT));
 	}
 
-	//logger->set_min_level(std::make_shared<Silence>());
+	shared_ptr<LoggerDecoration> logger_decoration{new HourLoggerDecoration};
+	shared_ptr<UserCustomGreeter> custom_greeter{new UserCustomGreeter{[](const string &m) {
+		HourLoggerDecoration decoration;
+
+		return "[" + decoration.get_decoration() + "Greetings] " + m;
+	}}};
+
+	logger = shared_ptr<Logger>{new BiLogger{
+		shared_ptr<Logger>{new ThreadLogger{shared_ptr<Logger>{new StandardLogger{logger_decoration}}}},
+		shared_ptr<Logger>{new BiLogger{
+			shared_ptr<Logger>{new ThreadLogger{shared_ptr<Logger>{new StreamLogger{std::make_shared<std::ofstream>("logs/last_execution.log"), logger_decoration}}}},
+			shared_ptr<Logger>{new ThreadLogger{shared_ptr<Logger>{new StreamLogger{std::make_shared<std::ofstream>("logs/history.log", std::ios_base::app), logger_decoration, custom_greeter}}}}
+		}}
+	}};
 
 	// Constants
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
@@ -111,8 +119,8 @@ int main(int argc, char *argv[]) {
 		UNUSED(level);
 		// returning true from the callback disables printing the message to stdout
 		//return level < log::Level::Warn;
-		//return true;
-		return false;
+		return true;
+		//return false;
 	});
 
 	Mavsdk mavsdk;
@@ -417,13 +425,10 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 	// Set mission plan
 	mut.lock();
 	operation_name = "set mission plan";
-	mut.unlock();
 
 	logger->write(info, "Uploading mission plan to system " + std::to_string(system_id));
 
-	mut.lock();
 	mission_result = mission.upload_mission(mission_plan);
-	mut.unlock();
 
 	while ((mission_result != Mission::Result::Success) and (attempts > 0)) {
 		--attempts;
@@ -434,9 +439,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 
 		std::this_thread::sleep_for(refresh_time);
 
-		mut.lock();
 		mission_result = mission.upload_mission(mission_plan);
-		mut.unlock();
 	}
 
 	if (mission_result == Mission::Result::Success) {
@@ -446,11 +449,10 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 		os << mission_result;
 		logger->write(error, "Error uploading mission plan to system " + std::to_string(system_id) + ": " + os.str());
 
-		mut.lock();
 		operation_ok = false;
 		error_code = ProRetCod::MISSION_FAILURE;
-		mut.unlock();
 	}
+	mut.unlock();
 
 	sync_point.arrive_and_wait();
 
