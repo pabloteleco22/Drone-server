@@ -36,7 +36,7 @@ Mission::MissionItem MissionHelper::make_mission_item(
 }
 
 void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission) const {
-    const double scale{1024.0};
+    const double scale{16384.0};
     Polygon helper = *area;
     for (size_t i = 0; i < helper.size(); ++i) {
         helper[i] *= scale;
@@ -80,12 +80,14 @@ void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int
         }
     }
 
+    float altitude{static_cast<float>(system_id)};
+    const float altitude_offset{10.0f};
+    altitude += altitude_offset;
+
     mission.push_back(MissionHelper::make_mission_item(
         polygon_of_interest.find_center().x,
         polygon_of_interest.find_center().y,
-        //47.398170327054473,
-        //8.5456490218639658,
-        10.0f,
+        altitude,
         5.0f,
         false,
         20.0f,
