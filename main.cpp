@@ -192,6 +192,8 @@ int main(int argc, char *argv[]) {
 			std::thread{drone_handler, system, std::ref(operation_ok), std::ref(operation_name), std::ref(mut),
 							std::ref(sync_point), std::ref(error_code), std::ref(final_systems), mission_helper, enough_systems}
 		));
+
+		std::this_thread::sleep_for(refresh_time);
 	}
 
 	for (shared_ptr<std::thread> th : threads_for_waiting) {
@@ -206,7 +208,11 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 	vector<std::string> url_list{};
 
 	for (int i {1}; i < argc; ++i) {
+		// Identificación por el puerto
 		url_list.push_back("udp://:" + std::string {argv[i]});
+
+		// Identificación por la IP
+		//url_list.push_back("udp://" + std::string {argv[i]} + ":8090");
 	}
 
 	logger->write(info, "Establishing connection...");
@@ -425,10 +431,13 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 	// Set mission plan
 	mut.lock();
 	operation_name = "set mission plan";
+	mut.unlock();
 
+	mut.lock();
+	std::this_thread::sleep_for(std::chrono::seconds{refresh_time});
 	logger->write(info, "Uploading mission plan to system " + std::to_string(system_id));
-
 	mission_result = mission.upload_mission(mission_plan);
+	mut.unlock();
 
 	while ((mission_result != Mission::Result::Success) and (attempts > 0)) {
 		--attempts;
@@ -437,9 +446,10 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 		os << mission_result;
 		logger->write(error, "Error uploading mission plan to system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
 
+		mut.lock();
 		std::this_thread::sleep_for(refresh_time);
-
 		mission_result = mission.upload_mission(mission_plan);
+		mut.unlock();
 	}
 
 	if (mission_result == Mission::Result::Success) {
@@ -449,10 +459,11 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 		os << mission_result;
 		logger->write(error, "Error uploading mission plan to system " + std::to_string(system_id) + ": " + os.str());
 
+		mut.lock();
 		operation_ok = false;
 		error_code = ProRetCod::MISSION_FAILURE;
+		mut.unlock();
 	}
-	mut.unlock();
 
 	sync_point.arrive_and_wait();
 
