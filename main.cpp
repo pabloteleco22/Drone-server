@@ -43,6 +43,63 @@ enum class ProRetCod : int {
 	UNKNOWN_ERROR = 255
 };
 
+class Operation {
+	bool operation_ok;
+	ProRetCod error_code;
+	string operation_name;
+	std::mutex mut;
+
+	public:
+		Operation(const bool operation_ok, const string operation_name) {
+			this->operation_ok = operation_ok;
+			this->operation_name = operation_name;
+			this->error_code = ProRetCod::UNKNOWN_ERROR;
+		}
+
+		operator bool() {
+			bool ok;
+
+			mut.lock();
+			ok = operation_ok;
+			mut.unlock();
+
+			return ok;
+		}
+
+		ProRetCod get_error_code() {
+			ProRetCod cod;
+
+			mut.lock();
+			cod = error_code;
+			mut.unlock();
+
+			return cod;
+		}
+
+		string get_name() {
+			string name;
+
+			mut.lock();
+			name = operation_name;
+			mut.unlock();
+
+			return name;
+		}
+
+		void set_failure(const ProRetCod error_code) {
+			mut.lock();
+			this->error_code = error_code;
+			operation_ok = false;
+			mut.unlock();
+		}
+
+		void set_name(const string operation_name) {
+			mut.lock();
+			this->operation_name = operation_name;
+			mut.unlock();
+		}
+};
+
 struct CheckEnoughSystems {
 	virtual bool exists_enough_systems(const float number_of_systems) = 0;
 	virtual string get_status(const float number_of_systems) = 0;
@@ -73,11 +130,11 @@ struct PercentageCheck final : public CheckEnoughSystems {
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems, shared_ptr<CheckEnoughSystems> enough_systems);
 
-void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operation_name, std::mutex &mut,
-							std::barrier<std::function<void()>> &sync_point, ProRetCod &error_code, float &final_systems,
+void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &mut,
+							std::barrier<std::function<void()>> &sync_point, float &final_systems,
 							shared_ptr<MissionHelper> mission_helper, shared_ptr<CheckEnoughSystems> enough_systems);
 
-shared_ptr<Logger> logger;
+Logger *logger;
 
 Error error;
 Warning warning;
@@ -98,13 +155,13 @@ int main(int argc, char *argv[]) {
 		return "[" + decoration.get_decoration() + "Greetings] " + m;
 	}}};
 
-	logger = shared_ptr<Logger>{new BiLogger{
+	logger = new BiLogger{
 		shared_ptr<Logger>{new ThreadLogger{shared_ptr<Logger>{new StandardLogger{logger_decoration}}}},
 		shared_ptr<Logger>{new BiLogger{
 			shared_ptr<Logger>{new ThreadLogger{shared_ptr<Logger>{new StreamLogger{std::make_shared<std::ofstream>("logs/last_execution.log"), logger_decoration}}}},
 			shared_ptr<Logger>{new ThreadLogger{shared_ptr<Logger>{new StreamLogger{std::make_shared<std::ofstream>("logs/history.log", std::ios_base::app), logger_decoration, custom_greeter}}}}
 		}}
-	}};
+	};
 
 	// Constants
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
@@ -172,16 +229,14 @@ int main(int argc, char *argv[]) {
 	vector<shared_ptr<std::thread>> threads_for_waiting{};
 
 	// Defining shared thread variables
-	bool operation_ok{true};
 	std::mutex mut;
-	string operation_name;
-	ProRetCod error_code;
-	std::function<void()> sync_handler{[&operation_ok, &operation_name, &error_code]() {
-		if (operation_ok) {
-			logger->write(info, "Synchronization point: " + operation_name);
+	Operation operation{true, ""};
+	std::function<void()> sync_handler{[&operation]() {
+		if (operation) {
+			logger->write(info, "Synchronization point: " + operation.get_name());
 		} else {
-			logger->write(error, "Operation \"" + operation_name + "\" fails");
-			exit(static_cast<int>(error_code));
+			logger->write(error, "Operation \"" + operation.get_name() + "\" fails");
+			exit(static_cast<int>(operation.get_error_code()));
 		}
 	}};
 	std::barrier<std::function<void()>> sync_point{static_cast<std::ptrdiff_t>(final_systems), sync_handler};
@@ -189,8 +244,8 @@ int main(int argc, char *argv[]) {
 
 	for (shared_ptr<System> system : system_list) {
 		threads_for_waiting.push_back(std::make_unique<std::thread>(
-			std::thread{drone_handler, system, std::ref(operation_ok), std::ref(operation_name), std::ref(mut),
-							std::ref(sync_point), std::ref(error_code), std::ref(final_systems), mission_helper, enough_systems}
+			std::thread{drone_handler, system, std::ref(operation), std::ref(mut),
+							std::ref(sync_point), std::ref(final_systems), mission_helper, enough_systems}
 		));
 
 		std::this_thread::sleep_for(refresh_time);
@@ -199,6 +254,8 @@ int main(int argc, char *argv[]) {
 	for (shared_ptr<std::thread> th : threads_for_waiting) {
 		th->join();
 	}
+
+	delete logger;
 
 	return static_cast<int>(ProRetCod::OK);
 }
@@ -269,8 +326,8 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 	return static_cast<float>(discovered_systems);
 }
 
-void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operation_name, std::mutex &mut,
-							std::barrier<std::function<void()>> &sync_point, ProRetCod &error_code, float &final_systems,
+void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &mut,
+							std::barrier<std::function<void()>> &sync_point, float &final_systems,
 							shared_ptr<MissionHelper> mission_helper, shared_ptr<CheckEnoughSystems> enough_systems) {
 	unsigned int system_id{static_cast<unsigned int>(system->get_system_id())};
 	Telemetry telemetry{system};
@@ -278,9 +335,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 	Mission mission{system};
 
 	// Check the health of all systems
-	mut.lock();
-	operation_name = "check system health";
-	mut.unlock();
+	operation.set_name("check system health");
 
 	logger->write(info, "Checking system " + std::to_string(system_id));
 
@@ -314,8 +369,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 		mut.lock();
 		--final_systems;
 		if (not enough_systems->exists_enough_systems(final_systems)) {
-			operation_ok = false;
-			error_code = ProRetCod::TELEMETRY_FAILURE;
+			operation.set_failure(ProRetCod::TELEMETRY_FAILURE);
 		}
 		mut.unlock();
 		logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
@@ -324,9 +378,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 	}
 
 	// Clear existing missions
-	mut.lock();
-	operation_name = "clear existing missions";
-	mut.unlock();
+	operation.set_name("clear existing missions");
 
 	logger->write(info, "System " + std::to_string(system_id) + " clearing existing missions");
 
@@ -351,8 +403,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 		mut.lock();
 		--final_systems;
 		if (not enough_systems->exists_enough_systems(final_systems)) {
-			operation_ok = false;
-			error_code = ProRetCod::MISSION_FAILURE;
+			operation.set_failure(ProRetCod::MISSION_FAILURE);
 		}
 		mut.unlock();
 		logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
@@ -361,9 +412,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 	}
 
 	// Set return to launch after mission true
-	mut.lock();
-	operation_name = "set return to launch after mission true";
-	mut.unlock();
+	operation.set_name("set return to launch after mission true");
 
 	logger->write(info, "System " + std::to_string(system_id) + " set return to launch after mission true");
 
@@ -388,8 +437,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 		mut.lock();
 		--final_systems;
 		if (not enough_systems->exists_enough_systems(final_systems)) {
-			operation_ok = false;
-			error_code = ProRetCod::MISSION_FAILURE;
+			operation.set_failure(ProRetCod::MISSION_FAILURE);
 		}
 		mut.unlock();
 		logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
@@ -398,9 +446,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 	}
 
 	// Make mission plan
-	mut.lock();
-	operation_name = "make mission plan";
-	mut.unlock();
+	operation.set_name("make mission plan");
 
 	vector<Mission::MissionItem> mission_item_vector;
 
@@ -412,10 +458,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 		} else {
 			logger->write(error, "System " + std::to_string(system_id) + " cannot make a mission: " + e.what());
 
-			mut.lock();
-			operation_ok = false;
-			error_code = ProRetCod::ACTION_FAILURE;
-			mut.unlock();
+			operation.set_failure(ProRetCod::ACTION_FAILURE);
 		}
 	}
 
@@ -429,9 +472,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 	sync_point.arrive_and_wait();
 
 	// Set mission plan
-	mut.lock();
-	operation_name = "set mission plan";
-	mut.unlock();
+	operation.set_name("set mission plan");
 
 	mut.lock();
 	//std::this_thread::sleep_for(refresh_time); // Guarantees success
@@ -459,18 +500,13 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 		os << mission_result;
 		logger->write(error, "Error uploading mission plan to system " + std::to_string(system_id) + ": " + os.str());
 
-		mut.lock();
-		operation_ok = false;
-		error_code = ProRetCod::MISSION_FAILURE;
-		mut.unlock();
+		operation.set_failure(ProRetCod::MISSION_FAILURE);
 	}
 
 	sync_point.arrive_and_wait();
 
 	// Arming systems
-	mut.lock();
-	operation_name = "arm systems";
-	mut.unlock();
+	operation.set_name("arm systems");
 
 	logger->write(info, "Arming system " + std::to_string(system_id));
 
@@ -491,20 +527,15 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 	if (action_result == Action::Result::Success) {
 		logger->write(info, "System " + std::to_string(system_id) + " armed");
 	} else {
-		mut.lock();
-		operation_ok = false;
-		error_code = ProRetCod::ACTION_FAILURE;
-		mut.unlock();
 		logger->write(warning, "System " + std::to_string(system_id) + " cannot be armed");
-		return;
+
+		operation.set_failure(ProRetCod::ACTION_FAILURE);
 	}
 
 	sync_point.arrive_and_wait();
 	
 	// Start mission
-	mut.lock();
-	operation_name = "start mission";
-	mut.unlock();
+	operation.set_name("start mission");
 
 	mission_result = mission.start_mission();
 
@@ -529,18 +560,13 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 		os << mission_result;
 		logger->write(error, "Error starting mission on system " + std::to_string(system_id) + ": " + os.str());
 
-		mut.lock();
-		operation_ok = false;
-		error_code = ProRetCod::MISSION_FAILURE;
-		mut.unlock();
+  		operation.set_failure(ProRetCod::MISSION_FAILURE);
 	}
 
 	sync_point.arrive_and_wait();
 
 	// Wait until the mission ends
-	mut.lock();
-	operation_name = "wait until the mission ends";
-	mut.unlock();
+	operation.set_name("wati until the mission ends");
 
 	std::promise<void> prom;
 	std::future fut{prom.get_future()};
