@@ -9,7 +9,7 @@ const char *CannotMakeMission::what() const noexcept {
     return message.c_str();
 }
 
-MissionHelper::MissionHelper(shared_ptr<Polygon> area) {
+MissionHelper::MissionHelper(Polygon area) {
     this->area = area;
 }
 
@@ -37,7 +37,7 @@ Mission::MissionItem MissionHelper::make_mission_item(
 
 void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission) const {
     const double scale{16384.0};
-    Polygon helper = *area;
+    Polygon helper = area;
     for (size_t i = 0; i < helper.size(); ++i) {
         helper[i] *= scale;
     }
@@ -70,7 +70,7 @@ void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int
     }
 
     if (number_of_systems == 1) {
-        polygon_of_interest = *area;
+        polygon_of_interest = area;
     } else {
         if (system_id == number_of_systems) 
             polygon_of_interest = discarded_area;

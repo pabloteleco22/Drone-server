@@ -101,6 +101,7 @@ class Operation {
 };
 
 struct CheckEnoughSystems {
+	virtual ~CheckEnoughSystems() {}
 	virtual bool exists_enough_systems(const float number_of_systems) = 0;
 	virtual string get_status(const float number_of_systems) = 0;
 };
@@ -128,11 +129,11 @@ struct PercentageCheck final : public CheckEnoughSystems {
 };
 
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
-float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems, shared_ptr<CheckEnoughSystems> enough_systems);
+float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems, CheckEnoughSystems *enough_systems);
 
 void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &mut,
 							std::barrier<std::function<void()>> &sync_point, float &final_systems,
-							shared_ptr<MissionHelper> mission_helper, shared_ptr<CheckEnoughSystems> enough_systems);
+							MissionHelper *mission_helper, CheckEnoughSystems *enough_systems);
 
 Logger *logger;
 
@@ -182,51 +183,47 @@ int main(int argc, char *argv[]) {
 
 	Mavsdk mavsdk;
 
-	//shared_ptr<Flag> flag{new RandomFlag{}};
+	//Flag *flag{new RandomFlag{}};
 	geometry::CoordinateTransformation coordinate_transformation{{47.3978409, 8.5456286}};
 	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
-	shared_ptr<Flag> flag{new FixedFlag{}};
+	Flag *flag{new FixedFlag{}};
 
-	shared_ptr<Polygon> search_area{new Polygon};
-	//search_area->push_back({static_cast<double>(RandomFlag::default_east_m.get_min()), static_cast<double>(RandomFlag::default_north_m.get_min())});
-	//search_area->push_back({static_cast<double>(RandomFlag::default_east_m.get_min()), static_cast<double>(RandomFlag::default_north_m.get_max())});
-	//search_area->push_back({static_cast<double>(RandomFlag::default_east_m.get_max()), static_cast<double>(RandomFlag::default_north_m.get_max())});
-	//search_area->push_back({static_cast<double>(RandomFlag::default_east_m.get_max()), static_cast<double>(RandomFlag::default_north_m.get_min())});
+	Polygon search_area;
+	//search_area.push_back({static_cast<double>(RandomFlag::default_east_m.get_min()), static_cast<double>(RandomFlag::default_north_m.get_min())});
+	//search_area.push_back({static_cast<double>(RandomFlag::default_east_m.get_min()), static_cast<double>(RandomFlag::default_north_m.get_max())});
+	//search_area.push_back({static_cast<double>(RandomFlag::default_east_m.get_max()), static_cast<double>(RandomFlag::default_north_m.get_max())});
+	//search_area.push_back({static_cast<double>(RandomFlag::default_east_m.get_max()), static_cast<double>(RandomFlag::default_north_m.get_min())});
 	global_coordinate = coordinate_transformation.global_from_local({0, 0});
-	search_area->push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({0, 90});
-	search_area->push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({20, 90});
-	search_area->push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({20, 0});
-	search_area->push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 
 	logger->write(debug, "Search area:");
-	for (auto v : search_area->get_vertex()) {
+	for (auto v : search_area.get_vertex()) {
 		logger->write(debug, "    " + static_cast<string>(v));
 	}
 
-	shared_ptr<MissionHelper> mission_helper{new ParallelSweep{search_area}};
+	MissionHelper *mission_helper{new ParallelSweep{search_area}};
 
 	logger->write(info, "The flag is in:\n" + static_cast<string>(*flag));
 
-	shared_ptr<CheckEnoughSystems> enough_systems{new PercentageCheck{static_cast<float>(expected_systems), percentage_drones_required}};
+	CheckEnoughSystems *enough_systems{new PercentageCheck{static_cast<float>(expected_systems), percentage_drones_required}};
 
 	establish_connections(argc, argv, mavsdk);
 	float final_systems{wait_systems(mavsdk, expected_systems, enough_systems)};
-
-	vector<shared_ptr<System>> system_list{};
 
 	for (shared_ptr<System> s : mavsdk.systems()) {
 		logger->write(debug, "System: " + std::to_string(static_cast<int>(s->get_system_id())) + "\n" +
 			"    Is connected: " + string((s->is_connected()) ? "true" : "false") + "\n" +
 			"    Has autopilot: " + string((s->has_autopilot()) ? "true" : "false") + "\n"
 		);
-
-		system_list.push_back(s);
 	}
 
-	vector<shared_ptr<std::thread>> threads_for_waiting{};
+	vector<std::thread> threads_for_waiting{};
 
 	// Defining shared thread variables
 	std::mutex mut;
@@ -242,20 +239,23 @@ int main(int argc, char *argv[]) {
 	std::barrier<std::function<void()>> sync_point{static_cast<std::ptrdiff_t>(final_systems), sync_handler};
 
 
-	for (shared_ptr<System> system : system_list) {
-		threads_for_waiting.push_back(std::make_unique<std::thread>(
+	for (shared_ptr<System> system : mavsdk.systems()) {
+		threads_for_waiting.push_back(
 			std::thread{drone_handler, system, std::ref(operation), std::ref(mut),
 							std::ref(sync_point), std::ref(final_systems), mission_helper, enough_systems}
-		));
+		);
 
 		std::this_thread::sleep_for(refresh_time);
 	}
 
-	for (shared_ptr<std::thread> th : threads_for_waiting) {
-		th->join();
+	for (std::thread &th : threads_for_waiting) {
+		th.join();
 	}
 
 	delete logger;
+	delete enough_systems;
+	delete mission_helper;
+	delete flag;
 
 	return static_cast<int>(ProRetCod::OK);
 }
@@ -287,7 +287,7 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 	}
 }
 
-float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems, shared_ptr<CheckEnoughSystems> enough_systems) {
+float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems, CheckEnoughSystems *enough_systems) {
 	vector<System>::size_type discovered_systems {mavsdk.systems().size()};
 
 	std::promise<void> prom{};
@@ -328,7 +328,7 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 
 void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &mut,
 							std::barrier<std::function<void()>> &sync_point, float &final_systems,
-							shared_ptr<MissionHelper> mission_helper, shared_ptr<CheckEnoughSystems> enough_systems) {
+							MissionHelper *mission_helper, CheckEnoughSystems *enough_systems) {
 	unsigned int system_id{static_cast<unsigned int>(system->get_system_id())};
 	Telemetry telemetry{system};
 	Action action{system};
@@ -475,7 +475,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	operation.set_name("set mission plan");
 
 	mut.lock();
-	//std::this_thread::sleep_for(refresh_time); // Guarantees success
+	std::this_thread::sleep_for(refresh_time); // Guarantees success
 	logger->write(info, "Uploading mission plan to system " + std::to_string(system_id));
 	mission_result = mission.upload_mission(mission_plan);
 	mut.unlock();
@@ -566,7 +566,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	sync_point.arrive_and_wait();
 
 	// Wait until the mission ends
-	operation.set_name("wati until the mission ends");
+	operation.set_name("wait until the mission ends");
 
 	std::promise<void> prom;
 	std::future fut{prom.get_future()};

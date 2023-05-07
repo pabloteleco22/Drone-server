@@ -17,11 +17,12 @@ struct CannotMakeMission : public std::exception {
 };
 
 struct MissionHelper {
-    MissionHelper(shared_ptr<Polygon> area);
+    MissionHelper(Polygon area);
+    virtual ~MissionHelper() {}
     virtual void new_mission(const unsigned int system_id, const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission) const = 0;
 
     protected:
-        shared_ptr<Polygon> area;
+        Polygon area;
 
         static Mission::MissionItem make_mission_item(double latitude_deg, double longitude_deg, float relative_altitude_m,
             float speed_m_s, bool is_fly_through, float gimbal_pitch_deg, float gimbal_yaw_deg,
