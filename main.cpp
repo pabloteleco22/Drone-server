@@ -237,7 +237,7 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 	std::future fut{prom.get_future()};
 	unsigned int times_executed{0};
 
-	Mavsdk::NewSystemHandle system_handle = mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, expected_systems, &prom, &times_executed, &system_handle]() {
+	mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, expected_systems, &prom, &times_executed]() {
 		discovered_systems = mavsdk.systems().size();
 		vector<System>::size_type remaining_systems {expected_systems - discovered_systems};
 
@@ -248,7 +248,7 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 		++times_executed;
 
 		if (times_executed == expected_systems) {
-			mavsdk.unsubscribe_on_new_system(system_handle);
+			mavsdk.subscribe_on_new_system(nullptr);
 			prom.set_value();
 		}
 	});
@@ -434,7 +434,7 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 	mut.unlock();
 
 	mut.lock();
-	std::this_thread::sleep_for(std::chrono::seconds{refresh_time});
+	//std::this_thread::sleep_for(refresh_time); // Guarantees success
 	logger->write(info, "Uploading mission plan to system " + std::to_string(system_id));
 	mission_result = mission.upload_mission(mission_plan);
 	mut.unlock();
@@ -545,14 +545,14 @@ void drone_handler(shared_ptr<System> system, bool &operation_ok, string &operat
 	std::promise<void> prom;
 	std::future fut{prom.get_future()};
 
-	Mission::MissionProgressHandle mission_progress_handle{mission.subscribe_mission_progress([&prom, &mission_progress_handle, &mission](Mission::MissionProgress mis_prog) {
-		logger->write(info, "Mission status: " + std::to_string(mis_prog.current) + "/" + std::to_string(mis_prog.total));
+	mission.subscribe_mission_progress([&system_id, &prom, &mission](Mission::MissionProgress mis_prog) {
+		logger->write(info, "System " + std::to_string(system_id) + " mission status: " + std::to_string(mis_prog.current) + "/" + std::to_string(mis_prog.total));
 
 		if (mis_prog.current == mis_prog.total) {
-			mission.unsubscribe_mission_progress(mission_progress_handle);
+			mission.subscribe_mission_progress(nullptr);
 			prom.set_value();
 		}
-	})};
+	});
 
 	fut.get();
 

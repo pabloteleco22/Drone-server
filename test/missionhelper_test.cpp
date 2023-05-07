@@ -53,9 +53,9 @@ TEST(ParallelSweepTest, NewMission3) {
     std::vector<Mission::MissionItem> mission_item_list;
 
     ASSERT_NO_THROW(mission_helper->new_mission(1, 1, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 2, mission_item_list));
-    //ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
-    //ASSERT_NO_THROW(mission_helper->new_mission(2, 4, mission_item_list));
-    //ASSERT_NO_THROW(mission_helper->new_mission(3, 4, mission_item_list));
-    //ASSERT_NO_THROW(mission_helper->new_mission(4, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(2, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(3, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, 4, mission_item_list));
 }
