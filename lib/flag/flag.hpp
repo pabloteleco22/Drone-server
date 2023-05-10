@@ -21,28 +21,32 @@ struct Flag {
 };
 
 class RandomFlag : public Flag {
-    private:
-        Position pos;
-
     public:
         class MaxMin {
             private:
-                int max;
-                int min;
+                double max;
+                double min;
             
             public:
-                MaxMin(int n1, int n2);
-                int get_max() const;
-                int get_min() const;
-                int get_interval() const;
+                MaxMin(double n1, double n2);
+                MaxMin(const MaxMin &other);
+                MaxMin &operator=(const MaxMin &other);
+                double get_max() const;
+                double get_min() const;
+                double get_interval() const;
         };
 
         inline static const MaxMin default_latitude_deg{10, -10};
         inline static const MaxMin default_longitude_deg{10, -10};
 
-        RandomFlag(MaxMin latitude_deg=default_latitude_deg, MaxMin longitude_deg=default_longitude_deg);
+        RandomFlag(const MaxMin &latitude_deg_interval=default_latitude_deg, const MaxMin &longitude_deg_interval=default_longitude_deg);
         Position get_flag_position() const override;
         operator std::string() const override;
+
+    private:
+        Position pos;
+        MaxMin latitude_deg_interval{default_latitude_deg};
+        MaxMin longitude_deg_interval{default_longitude_deg};
 };
 
 class FixedFlag : public Flag {

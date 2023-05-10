@@ -16,8 +16,6 @@
 #include <fstream>
 #include <geometry.h>
 
-#define UNUSED(x) (void)(x)
-
 using namespace mavsdk;
 using namespace simple_logger;
 using std::vector;
@@ -50,9 +48,9 @@ class Operation {
 	std::mutex mut;
 
 	public:
-		Operation(const bool operation_ok, const string operation_name) {
-			this->operation_ok = operation_ok;
-			this->operation_name = operation_name;
+		Operation() {
+			this->operation_ok = true;
+			this->operation_name = "";
 			this->error_code = ProRetCod::UNKNOWN_ERROR;
 		}
 
@@ -167,14 +165,10 @@ int main(int argc, char *argv[]) {
 	// Constants
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
 
-	log::subscribe([](log::Level level,   // message severity level
-                          const std::string& message, // message text
-                          const std::string& file,    // source file from which the message was sent
-                          int line) {                 // line number in the source file
-		UNUSED(message);
-		UNUSED(file);
-		UNUSED(line);
-		UNUSED(level);
+	log::subscribe([](log::Level,   // message severity level
+                          const std::string&, // message text
+                          const std::string&,    // source file from which the message was sent
+                          int) {                 // line number in the source file
 		// returning true from the callback disables printing the message to stdout
 		//return level < log::Level::Warn;
 		return true;
@@ -183,16 +177,24 @@ int main(int argc, char *argv[]) {
 
 	Mavsdk mavsdk;
 
-	//Flag *flag{new RandomFlag{}};
 	geometry::CoordinateTransformation coordinate_transformation{{47.3978409, 8.5456286}};
-	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
-	Flag *flag{new FixedFlag{}};
+	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate_south_west;
+	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate_north_east;
+	global_coordinate_south_west = coordinate_transformation.global_from_local({0, 0});
+	global_coordinate_north_east = coordinate_transformation.global_from_local({20, 90});
+	RandomFlag::MaxMin latitude_deg{global_coordinate_south_west.latitude_deg, global_coordinate_north_east.latitude_deg};
+	RandomFlag::MaxMin longitude_deg{global_coordinate_south_west.longitude_deg, global_coordinate_north_east.longitude_deg};
+	Flag *flag{new RandomFlag{latitude_deg, longitude_deg}};
+	//geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
+	//Flag *flag{new FixedFlag{}};
 
 	Polygon search_area;
-	//search_area.push_back({static_cast<double>(RandomFlag::default_east_m.get_min()), static_cast<double>(RandomFlag::default_north_m.get_min())});
-	//search_area.push_back({static_cast<double>(RandomFlag::default_east_m.get_min()), static_cast<double>(RandomFlag::default_north_m.get_max())});
-	//search_area.push_back({static_cast<double>(RandomFlag::default_east_m.get_max()), static_cast<double>(RandomFlag::default_north_m.get_max())});
-	//search_area.push_back({static_cast<double>(RandomFlag::default_east_m.get_max()), static_cast<double>(RandomFlag::default_north_m.get_min())});
+	search_area.push_back({latitude_deg.get_min(), longitude_deg.get_min()});
+	search_area.push_back({latitude_deg.get_min(), longitude_deg.get_max()});
+	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_max()});
+	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_min()});
+
+	/*
 	global_coordinate = coordinate_transformation.global_from_local({0, 0});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({0, 90});
@@ -201,6 +203,7 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({20, 0});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	*/
 
 	logger->write(debug, "Search area:");
 	for (auto v : search_area.get_vertex()) {
@@ -227,7 +230,7 @@ int main(int argc, char *argv[]) {
 
 	// Defining shared thread variables
 	std::mutex mut;
-	Operation operation{true, ""};
+	Operation operation;
 	std::function<void()> sync_handler{[&operation]() {
 		if (operation) {
 			logger->write(info, "Synchronization point: " + operation.get_name());

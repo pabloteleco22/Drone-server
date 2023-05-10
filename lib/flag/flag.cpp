@@ -2,7 +2,7 @@
 
 #include <time.h>
 
-RandomFlag::MaxMin::MaxMin(int n1, int n2) {
+RandomFlag::MaxMin::MaxMin(double n1, double n2) {
     if (n1 > n2) {
         this->max = n1;
         this->min = n2;
@@ -12,30 +12,47 @@ RandomFlag::MaxMin::MaxMin(int n1, int n2) {
     }
 }
 
-int RandomFlag::MaxMin::get_max() const {
+RandomFlag::MaxMin::MaxMin(const MaxMin &other) {
+    max = other.max;
+    min = other.min;
+}
+
+RandomFlag::MaxMin &RandomFlag::MaxMin::operator=(const MaxMin &other) {
+    max = other.max;
+    min = other.min;
+
+    return *this;
+}
+
+double RandomFlag::MaxMin::get_max() const {
     return this->max;
 }
 
-int RandomFlag::MaxMin::get_min() const {
+double RandomFlag::MaxMin::get_min() const {
     return this->min;
 }
 
-int RandomFlag::MaxMin::get_interval() const {
+double RandomFlag::MaxMin::get_interval() const {
     return this->max - this->min;
 }
 
-RandomFlag::RandomFlag(MaxMin latitude_deg, MaxMin longitude_deg) {
+RandomFlag::RandomFlag(const MaxMin &latitude_deg_interval, const MaxMin &longitude_deg_interval) {
     srand(time(NULL));
 
-    if (latitude_deg.get_interval() != 0)
-        pos.latitude_deg = static_cast<float>(latitude_deg.get_min() + rand() % latitude_deg.get_interval()) + static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-    else
-        pos.latitude_deg = latitude_deg.get_max();
+    this->latitude_deg_interval = latitude_deg_interval;
+    this->longitude_deg_interval = longitude_deg_interval;
 
-    if (longitude_deg.get_interval() != 0)
-        pos.longitude_deg = static_cast<float>(longitude_deg.get_min() + rand() % longitude_deg.get_interval()) + static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-    else
-        pos.longitude_deg = longitude_deg.get_max();
+    if (latitude_deg_interval.get_interval() != 0) {
+        pos.latitude_deg = latitude_deg_interval.get_min() + latitude_deg_interval.get_interval() * static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+    } else {
+        pos.latitude_deg = latitude_deg_interval.get_max();
+    }
+
+    if (longitude_deg_interval.get_interval() != 0) {
+        pos.longitude_deg = longitude_deg_interval.get_min() + longitude_deg_interval.get_interval() * static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+    } else {
+        pos.longitude_deg = longitude_deg_interval.get_max();
+    }
 }
 
 Flag::Position RandomFlag::get_flag_position() const {
