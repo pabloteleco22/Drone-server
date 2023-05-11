@@ -14,8 +14,9 @@ private:
 
 public:
     Polygon();
-    Polygon(const Points &p);
     Polygon(const Polygon &p);
+
+    Polygon(const Points &p);
 
     class NotEnoughPointsException : public std::exception {
         std::string message{"The polygon has not enough vertices"};
@@ -23,6 +24,15 @@ public:
             NotEnoughPointsException();
             NotEnoughPointsException(const std::string &message);
             NotEnoughPointsException(const char *message);
+            const char *what() const noexcept override;
+    };
+
+    class CannotSplitException : public std::exception {
+        std::string message{"The polygon has not enough vertices"};
+        public:
+            CannotSplitException ();
+            CannotSplitException (const std::string &message);
+            CannotSplitException (const char *message);
             const char *what() const noexcept override;
     };
 /**
@@ -48,7 +58,7 @@ public:
      * true: if it is possible.
      * false: if it is not possible.
     */
-    bool split(double square, Polygon &remainder, Polygon &interest, Segment &cut_line) const;
+    void split(double square, Polygon &poly1, Polygon &poly2, Segment &cut_line) const;
 
     /**
      * @brief Returns the distance between the nearest point of the polygon

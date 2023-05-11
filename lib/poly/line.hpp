@@ -178,7 +178,7 @@ class Segment {
         bool cross_line(const Line &line, Point &result) const;
 
         /**
-         * @brief Returns whether the thw segments intersect and
+         * @brief Returns whether the the segments intersect and
          * the point of intersection between them
          * 
          * @param

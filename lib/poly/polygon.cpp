@@ -152,15 +152,28 @@ const char *Polygon::NotEnoughPointsException::what() const noexcept {
     return message.c_str();
 }
 
+Polygon::CannotSplitException::CannotSplitException () {}
+
+Polygon::CannotSplitException::CannotSplitException (const std::string &message) {
+    this->message = std::string{message};
+}
+
+Polygon::CannotSplitException::CannotSplitException (const char *message) {
+    this->message = std::string{message};
+}
+
+const char *Polygon::CannotSplitException::what() const noexcept {
+    return message.c_str();
+}
 
 Polygon::Polygon() {}
 
-Polygon::Polygon(const Points &p) {
-    vertex = p;
-}
-
 Polygon::Polygon(const Polygon &p) {
     vertex = p.vertex;
+}
+
+Polygon::Polygon(const Points &p) {
+    vertex = p;
 }
 
 double Polygon::count_square_signed(void) const {
@@ -186,7 +199,7 @@ double Polygon::count_square() const {
     return fabs(count_square_signed());
 }
 
-bool Polygon::split(double square, Polygon &poly1, Polygon &poly2, Segment &cut_line) const {
+void Polygon::split(double square, Polygon &poly1, Polygon &poly2, Segment &cut_line) const {
     int polygon_size{static_cast<int>(vertex.size())};
 
     Points polygon{vertex};
@@ -199,7 +212,7 @@ bool Polygon::split(double square, Polygon &poly1, Polygon &poly2, Segment &cut_
 
     if (count_square() - square <= POLY_SPLIT_EPS) {
         poly1 = *this;
-        return false;
+        throw Polygon::CannotSplitException{"The required area is too big"};
     }
 
     bool min_cut_line_exists{false};
@@ -247,11 +260,9 @@ bool Polygon::split(double square, Polygon &poly1, Polygon &poly2, Segment &cut_
 
         poly2.push_back(cut_line.get_end());
         poly2.push_back(cut_line.get_start());
-
-        return true;
     } else {
         poly1 = Polygon{polygon};
-        return false;
+        throw Polygon::CannotSplitException{"The cut line does not exists"};
     }
 }
 

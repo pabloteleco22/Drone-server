@@ -1,5 +1,4 @@
 #include "missionhelper.hpp"
-#include <iostream>
 
 CannotMakeMission::CannotMakeMission(std::string message) {
     this->message = "CannotMakeMission: " + message;
@@ -36,11 +35,14 @@ Mission::MissionItem MissionHelper::make_mission_item(
 }
 
 void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission) const {
-    const double scale{16384.0};
+    const double precision{1E6};
     Polygon helper = area;
     for (size_t i = 0; i < helper.size(); ++i) {
-        helper[i] *= scale;
+        helper[i] *= precision;
+        helper[i].x = round(helper[i].x);
+        helper[i].y = round(helper[i].y);
     }
+
     double partial_area{helper.count_square() / static_cast<double>(number_of_systems)};
 
     if (partial_area <= 0) {
@@ -55,28 +57,40 @@ void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int
         throw CannotMakeMission("The system ID must be less than or equal to the number of systems");
     }
 
-    Polygon polygon_of_interest;
-    Polygon discarded_area;
+    Polygon poly1;
+    Polygon poly2;
+    Polygon *polygon_of_interest{&poly1};
+    Polygon *discarded_area{&poly2};
     Segment cut_line;
 
-    unsigned int n_iterations{(system_id < number_of_systems) ? system_id : (number_of_systems - 1)};
+    const unsigned int n_iterations{(system_id < number_of_systems) ? system_id : (number_of_systems - 1)};
 
     for (unsigned int i = 0; i < n_iterations; ++i) {
-        if (not helper.split(partial_area, discarded_area, polygon_of_interest, cut_line)) {
-            throw CannotMakeMission("Cannot split the required area");
+        try {
+            helper.split(partial_area, poly1, poly2, cut_line);
+        } catch (const Polygon::CannotSplitException &e) {
+            throw CannotMakeMission(std::string{"Cannot split the required area. "} + e.what());
         }
 
-        helper = discarded_area;
+        if (poly1.count_square() - partial_area < poly2.count_square() - partial_area) {
+            polygon_of_interest = &poly1;
+            discarded_area = &poly2;
+        } else {
+            polygon_of_interest = &poly2;
+            discarded_area = &poly1;
+        }
+
+        helper = *discarded_area;
     }
 
     if (number_of_systems == 1) {
-        polygon_of_interest = area;
+        *polygon_of_interest = area;
     } else {
         if (system_id == number_of_systems) 
             polygon_of_interest = discarded_area;
 
-        for (size_t i = 0; i < polygon_of_interest.size(); ++i) {
-            polygon_of_interest[i] /= scale;
+        for (size_t i = 0; i < polygon_of_interest->size(); ++i) {
+            (*polygon_of_interest)[i] /= precision;
         }
     }
 
@@ -85,8 +99,8 @@ void ParallelSweep::new_mission(const unsigned int system_id, const unsigned int
     altitude += altitude_offset;
 
     mission.push_back(MissionHelper::make_mission_item(
-        polygon_of_interest.find_center().x,
-        polygon_of_interest.find_center().y,
+        polygon_of_interest->find_center().x,
+        polygon_of_interest->find_center().y,
         altitude,
         5.0f,
         false,

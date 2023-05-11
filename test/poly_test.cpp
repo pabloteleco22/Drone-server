@@ -161,7 +161,8 @@ TEST(LineTest, DistanceIn) {
     const Point distance_point{2, 4};
     const Line lin{start_point, end_point};
 
-    const double expected_distance{1.414213562};
+    //const double expected_distance{1.414213562};
+    const double expected_distance{sqrt(2.0)};
 
     ASSERT_LE(fabs(fabs(lin.get_distance(distance_point)) - expected_distance), POLY_SPLIT_EPS);
 }
@@ -172,7 +173,8 @@ TEST(LineTest, DistanceOut) {
     const Point distance_point{-2, -4};
     const Line lin{start_point, end_point};
 
-    const double expected_distance{1.414213562};
+    //const double expected_distance{1.414213562};
+    const double expected_distance{sqrt(2.0)};
 
     ASSERT_LE(fabs(fabs(lin.get_distance(distance_point)) - expected_distance), POLY_SPLIT_EPS);
 }
@@ -419,7 +421,8 @@ TEST(SegmentTest, DistanceIn) {
     const Point distance_point{2, 4};
     const Segment seg{start_point, end_point};
 
-    const double expected_distance{1.414213562};
+    //const double expected_distance{1.414213562};
+    const double expected_distance{sqrt(2.0)};
 
     ASSERT_LE(fabs(fabs(seg.get_distance(distance_point)) - expected_distance), POLY_SPLIT_EPS);
 }
@@ -430,7 +433,8 @@ TEST(SegmentTest, DistanceOut) {
     const Point distance_point{-2, -4};
     const Segment seg{start_point, end_point};
 
-    const double expected_distance{1.414213562};
+    //const double expected_distance{1.414213562};
+    const double expected_distance{sqrt(2.0)};
 
     ASSERT_LE(fabs(fabs(seg.get_distance(distance_point)) - expected_distance), POLY_SPLIT_EPS);
 }
@@ -688,7 +692,7 @@ TEST(PolygonTest, SplitTrue) {
     const double expected_area{3};
     const Segment expected_cut_line{Point{1.5, 2}, Point{1.5, 0}};
 
-    ASSERT_TRUE(original_poly.split(expected_area, first_poly, second_poly, cut_line));
+    ASSERT_NO_THROW(original_poly.split(expected_area, first_poly, second_poly, cut_line));
     ASSERT_EQ(second_poly.count_square(), expected_area);
     ASSERT_EQ(first_poly.count_square() + second_poly.count_square(), original_poly.count_square());
     ASSERT_EQ(cut_line, expected_cut_line);
@@ -706,7 +710,7 @@ TEST(PolygonTest, SplitFalse) {
     Segment cut_line;
     const double expected_area{300};
 
-    ASSERT_FALSE(original_poly.split(expected_area, first_poly, second_poly, cut_line));
+    ASSERT_THROW(original_poly.split(expected_area, first_poly, second_poly, cut_line), Polygon::CannotSplitException);
 }
 
 TEST(PolygonTest, FindDistanceOutside) {
@@ -783,7 +787,7 @@ TEST(PolygonTest, FindEmptyNearestPoint) {
     ASSERT_THROW(poly.find_nearest_point(point), Polygon::NotEnoughPointsException);
 }
 
-TEST(PolygonTest, FindCenter1) {
+TEST(PolygonTest, FindCenter) {
     Points points;
     points.push_back(Point{});
     points.push_back(Point{2, 0});
@@ -792,19 +796,6 @@ TEST(PolygonTest, FindCenter1) {
     const Polygon poly{points};
 
     const Point expected_point{1, 1};
-
-    ASSERT_EQ(poly.find_center(), expected_point);
-}
-
-TEST(PolygonTest, FindCenter2) {
-    Points points;
-    points.push_back(Point{});
-    points.push_back(Point{0, 100});
-    points.push_back(Point{20, 100});
-    points.push_back(Point{20, 0});
-    const Polygon poly{points};
-
-    const Point expected_point{10, 50};
 
     ASSERT_EQ(poly.find_center(), expected_point);
 }

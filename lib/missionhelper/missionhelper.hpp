@@ -2,11 +2,9 @@
 
 #include "../poly/polygon.hpp"
 #include <mavsdk/plugins/mission/mission.h>
-#include <memory>
 #include <exception>
 
 using namespace mavsdk;
-using std::shared_ptr;
 
 struct CannotMakeMission : public std::exception {
     CannotMakeMission(std::string message);

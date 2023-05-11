@@ -185,7 +185,6 @@ int main(int argc, char *argv[]) {
 	RandomFlag::MaxMin latitude_deg{global_coordinate_south_west.latitude_deg, global_coordinate_north_east.latitude_deg};
 	RandomFlag::MaxMin longitude_deg{global_coordinate_south_west.longitude_deg, global_coordinate_north_east.longitude_deg};
 	Flag *flag{new RandomFlag{latitude_deg, longitude_deg}};
-	//geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
 	//Flag *flag{new FixedFlag{}};
 
 	Polygon search_area;
@@ -195,6 +194,7 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_min()});
 
 	/*
+	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
 	global_coordinate = coordinate_transformation.global_from_local({0, 0});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({0, 90});
