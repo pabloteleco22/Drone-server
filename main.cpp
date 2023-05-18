@@ -147,20 +147,33 @@ int main(int argc, char *argv[]) {
 		exit(static_cast<int>(ProRetCod::BAD_ARGUMENT));
 	}
 
-	shared_ptr<LoggerDecoration> logger_decoration{new HourLoggerDecoration};
-	shared_ptr<UserCustomGreeter> custom_greeter{new UserCustomGreeter{[](const string &m) {
+	HourLoggerDecoration logger_decoration;
+	UserCustomGreeter custom_greeter{[](const string &m) {
 		HourLoggerDecoration decoration;
 
 		return "[" + decoration.get_decoration() + "Greetings] " + m;
-	}}};
+	}};
 
-	logger = new BiLogger{
-		shared_ptr<Logger>{new ThreadLogger{shared_ptr<Logger>{new StandardLogger{logger_decoration}}}},
-		shared_ptr<Logger>{new BiLogger{
-			shared_ptr<Logger>{new ThreadLogger{shared_ptr<Logger>{new StreamLogger{std::make_shared<std::ofstream>("logs/last_execution.log"), logger_decoration}}}},
-			shared_ptr<Logger>{new ThreadLogger{shared_ptr<Logger>{new StreamLogger{std::make_shared<std::ofstream>("logs/history.log", std::ios_base::app), logger_decoration, custom_greeter}}}}
-		}}
-	};
+	StandardLoggerBuilder standard_logger_builder;
+	standard_logger_builder.set_decoration(&logger_decoration);
+	Logger *standard_logger{standard_logger_builder.build()};
+	ThreadLogger thread_standard_logger{standard_logger};
+
+	std::ofstream last_execution_stream{"logs/last_execution.log"};
+	StreamLoggerBuilder stream_logger_builder{&last_execution_stream};
+	stream_logger_builder.set_decoration(&logger_decoration);
+	Logger *last_execution_logger{stream_logger_builder.build()};
+	ThreadLogger thread_last_execution_logger{last_execution_logger};
+
+	std::ofstream history_stream{"logs/history.log", std::ios_base::app};
+	stream_logger_builder.set_stream(&history_stream)
+						 .set_greeter(&custom_greeter);
+	Logger *history_logger{stream_logger_builder.build()};
+	ThreadLogger thread_history_logger{history_logger};
+
+	BiLogger stream_loggers{&thread_last_execution_logger, &thread_history_logger};
+
+	logger = new BiLogger{standard_logger, &stream_loggers};
 
 	// Constants
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
@@ -256,6 +269,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	delete logger;
+	delete standard_logger;
+	delete last_execution_logger;
+	delete history_logger;
 	delete enough_systems;
 	delete mission_helper;
 	delete flag;
@@ -520,7 +536,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 
 		std::ostringstream os;
 		os << action_result;
-		logger->write(error, "Error arming system " + std::to_string(system_id) + ": " + os.str());
+		logger->write(error, "Error arming system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
 
 		std::this_thread::sleep_for(refresh_time);
 

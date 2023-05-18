@@ -1,22 +1,18 @@
 #pragma once
 
 #include <string>
-#include <memory>
 #include <chrono>
 #include <ostream>
 #include <mutex>
 #include <functional>
 
 using std::string;
-using std::shared_ptr;
 
 namespace simple_logger {
 /** Levels **/
 struct Level {
     Level() {};
-    Level(const Level &other);
     Level(const Level *other);
-    Level(shared_ptr<const Level> other);
     virtual ~Level() = 0;
     bool operator>=(const Level &other) const;
     bool operator>(const Level &other) const;
@@ -166,82 +162,114 @@ struct Logger {
     virtual ~Logger() {};
 
     virtual void write(const Level &level, const string &message) = 0;
-    virtual void write(shared_ptr<const Level> level, const string &message) = 0;
-    virtual void set_level_filter(shared_ptr<const LevelFilter> level_filter) = 0;
+    virtual void set_level_filter(const LevelFilter *level_filter) = 0;
 
     protected:
 };
 
 struct WriterLogger : public Logger {
     WriterLogger(const WriterLogger &other);
-    WriterLogger(shared_ptr<const LoggerDecoration> decoration);
-    virtual void set_level_filter(shared_ptr<const LevelFilter> level_filter) override;
+    WriterLogger(const LoggerDecoration *decoration);
+    virtual void set_level_filter(const LevelFilter *level_filter) override;
 
     protected:
-        shared_ptr<const LoggerDecoration> decoration;
-        shared_ptr<const LevelFilter> level_filter;
+        const LoggerDecoration *decoration;
+        const LevelFilter *level_filter;
 };
 
 struct StreamLogger : public WriterLogger {
     StreamLogger() = delete;
     StreamLogger(const StreamLogger &other);
-    StreamLogger(shared_ptr<std::ostream> stream, const string &greeting_message=default_greeting_message);
-    StreamLogger(shared_ptr<std::ostream> stream, shared_ptr<const LoggerDecoration> decoration, const string &greeting_message=default_greeting_message);
-    StreamLogger(shared_ptr<std::ostream> stream, shared_ptr<const Greeter> greeter, const string &greeting_message=default_greeting_message);
-    StreamLogger(shared_ptr<std::ostream> stream, shared_ptr<const LoggerDecoration> decoration, shared_ptr<const Greeter> greeter, const string &greeting_message=default_greeting_message);
+    StreamLogger(std::ostream *stream, const LoggerDecoration *decoration, const Greeter *greeter, const string &greeting_message=default_greeting_message);
 
     virtual void write(const Level &level, const string &message) override;
-    virtual void write(shared_ptr<const Level> level, const string &message) override;
+
+    static const string default_greeting_message;
 
     protected:
-        shared_ptr<std::ostream> stream;
+        std::ostream *stream;
 
     private:
         void greetings(const string &g) const;
-        static const string default_greeting_message;
 };
 
 struct StandardLogger : public StreamLogger {
-    StandardLogger(const string &greeting_message=default_greeting_message);
     StandardLogger(const StandardLogger &other);
 
-    StandardLogger(shared_ptr<const LoggerDecoration> decoration, const string &greeting_message=default_greeting_message);
-    StandardLogger(shared_ptr<const Greeter> greeter, const string &greeting_message=default_greeting_message);
-    StandardLogger(shared_ptr<const LoggerDecoration> decoration, shared_ptr<const Greeter> greeter, const string &greeting_message=default_greeting_message);
+    StandardLogger(const LoggerDecoration *decoration, const Greeter *greeter, const string &greeting_message=default_greeting_message);
 
     virtual void write(const Level &level, const string &message) override;
-    virtual void write(shared_ptr<const Level> level, const string &message) override;
 
-    private:
-        static const string default_greeting_message;
+    static const string default_greeting_message;
 };
 
 struct ThreadLogger : public Logger {
     ThreadLogger() = delete;
     ThreadLogger(const ThreadLogger &other) = delete;
 
-    ThreadLogger(shared_ptr<Logger> other);
+    ThreadLogger(Logger *other);
 
     void write(const Level &level, const string &message) override;
-    void write(shared_ptr<const Level> level, const string &message) override;
-    void set_level_filter(shared_ptr<const LevelFilter> level_filter) override;
+    void set_level_filter(const LevelFilter *level_filter) override;
+    void set_logger(Logger *logger);
 
     private:
         std::mutex mut;
-        shared_ptr<Logger> logger;
+        Logger *logger;
 };
 
 struct BiLogger : public Logger {
     BiLogger() = delete;
     BiLogger(const BiLogger &other) = delete;
-    BiLogger(shared_ptr<Logger> logger1, shared_ptr<Logger> logger2);
+    BiLogger(Logger *logger1, Logger *logger2);
 
     void write(const Level &level, const string &message) override;
-    void write(shared_ptr<const Level> level, const string &message) override;
-    void set_level_filter(shared_ptr<const LevelFilter> level_filter) override;
+    void set_level_filter(const LevelFilter *level_filter) override;
+    void set_first_logger(Logger *logger);
+    void set_second_logger(Logger *logger);
 
     private:
-        shared_ptr<Logger> logger1;
-        shared_ptr<Logger> logger2;
+        Logger *logger1;
+        Logger *logger2;
+};
+
+/** LoggerBuilder **/
+struct LoggerBuilder {
+    virtual Logger *build() = 0;
+};
+
+class StandardLoggerBuilder : public LoggerBuilder {
+    VoidLoggerDecoration default_decoration;
+    ColorfulDefaultGreeter default_greeter;
+    string greeting_string{StandardLogger::default_greeting_message};
+
+    const LoggerDecoration *decoration{&default_decoration};
+    const Greeter *greeter{&default_greeter};
+
+    public:
+        Logger *build() override;
+        StandardLoggerBuilder &set_decoration(const LoggerDecoration *decoration);
+        StandardLoggerBuilder &set_greeter(const Greeter *greeter);
+        StandardLoggerBuilder &set_greeting_string(const string &greeting_string);
+        StandardLoggerBuilder &reset_config();
+};
+
+class StreamLoggerBuilder : public LoggerBuilder {
+    VoidLoggerDecoration default_decoration;
+    DefaultGreeter default_greeter;
+    string greeting_string = StreamLogger::default_greeting_message;
+
+    const LoggerDecoration *decoration{&default_decoration};
+    const Greeter *greeter{&default_greeter};
+    std::ostream *stream;
+
+    public:
+        StreamLoggerBuilder(std::ostream *stream);
+        Logger *build() override;
+        StreamLoggerBuilder &set_stream(std::ostream *stream);
+        StreamLoggerBuilder &set_decoration(const LoggerDecoration *decoration);
+        StreamLoggerBuilder &set_greeter(const Greeter *greeter);
+        StreamLoggerBuilder &set_greeting_string(const string &greeting_string);
+        StreamLoggerBuilder &reset_config();
 };
 };
