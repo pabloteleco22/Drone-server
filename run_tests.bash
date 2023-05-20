@@ -4,15 +4,15 @@ failed_tests=0
 file_names=''
 
 for test in $(find build -regex ".*_\(test\|demo\)$"); do
-    test="$(cut -d '/' -f2 <<< $test)"
-    echo -e "\033[1;4;34mRunning \"$test\"\033[0m"
-    ./build/$test
+    test_name=$(basename $test)
+    echo -e "\033[1;4;34mRunning \"$test_name\"\033[0m"
+    ./$test
     if test $? -ne 0; then
         failed_tests=$[$failed_tests+1]
         if test "$file_names" = ""; then
-            file_names="$(cut -d '/' -f2 <<< $test)"
+            file_names=$test_name
         else
-            file_names="$file_names\n$(cut -d '/' -f2 <<< $test)"
+            file_names="$file_names\n$test_name"
         fi
     fi
 
