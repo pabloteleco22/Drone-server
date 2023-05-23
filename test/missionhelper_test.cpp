@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "../lib/missionhelper/missionhelper.hpp"
 
-TEST(ParallelSweepTest, NewMissionThrowException) {
+TEST(GoCenterTest, NewMissionThrowException) {
     Polygon poly;
     MissionHelper *mission_helper{new GoCenter{poly}};
     std::vector<Mission::MissionItem> mission_item_list;
@@ -11,7 +11,7 @@ TEST(ParallelSweepTest, NewMissionThrowException) {
     delete mission_helper;
 }
 
-TEST(ParallelSweepTest, NewMission) {
+TEST(GoCenterTest, NewMission) {
     Polygon poly;
     poly.push_back({0,0});
     poly.push_back({1,0});
@@ -29,7 +29,7 @@ TEST(ParallelSweepTest, NewMission) {
     delete mission_helper;
 }
 
-TEST(ParallelSweepTest, NewMission2) {
+TEST(GoCenterTest, NewMission2) {
     Polygon poly;
     poly.push_back({0,0});
     poly.push_back({100,0});
@@ -48,7 +48,7 @@ TEST(ParallelSweepTest, NewMission2) {
     delete mission_helper;
 }
 
-TEST(ParallelSweepTest, NewMission3) {
+TEST(GoCenterTest, NewMission3) {
     Polygon poly;
     poly.push_back({47.397841,8.545629});
     poly.push_back({47.397841,8.546824});
@@ -68,7 +68,7 @@ TEST(ParallelSweepTest, NewMission3) {
     delete mission_helper;
 }
 
-TEST(ParallelSweepTest, NewMission4) {
+TEST(GoCenterTest, NewMission4) {
     Polygon poly;
     poly.push_back({47.3978,8.5456});
     poly.push_back({47.3978,8.5468});
@@ -76,6 +76,26 @@ TEST(ParallelSweepTest, NewMission4) {
     poly.push_back({47.3980,8.5456});
 
     MissionHelper *mission_helper{new GoCenter{poly}};
+    std::vector<Mission::MissionItem> mission_item_list;
+
+    ASSERT_NO_THROW(mission_helper->new_mission(1, 1, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(2, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(3, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, 4, mission_item_list));
+
+    delete mission_helper;
+}
+
+TEST(SpiralSweepTest, NewMission4) {
+    Polygon poly;
+    poly.push_back({47.3978,8.5456});
+    poly.push_back({47.3978,8.5468});
+    poly.push_back({47.3980,8.5468});
+    poly.push_back({47.3980,8.5456});
+
+    MissionHelper *mission_helper{new SpiralSweep{poly, 0.000018}};
     std::vector<Mission::MissionItem> mission_item_list;
 
     ASSERT_NO_THROW(mission_helper->new_mission(1, 1, mission_item_list));

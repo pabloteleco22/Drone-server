@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
 
 	BiLogger stream_loggers{&thread_last_execution_logger, &thread_history_logger};
 
-	logger = new BiLogger{standard_logger, &stream_loggers};
+	logger = new BiLogger{&thread_standard_logger, &stream_loggers};
 
 	// Constants
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
@@ -221,9 +221,10 @@ int main(int argc, char *argv[]) {
 	}
 
 	geometry::CoordinateTransformation::GlobalCoordinate base{coordinate_transformation.global_from_local({0, 0})};
-	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({2, 2})};
+	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({5, 0})};
 	logger->write(debug, "Separation: " + std::to_string(separation.latitude_deg - base.latitude_deg));
 	MissionHelper *mission_helper{new SpiralSweep{search_area, separation.latitude_deg - base.latitude_deg}};
+	//MissionHelper *mission_helper{new GoCenter{search_area}};
 
 	logger->write(info, "The flag is in:\n" + static_cast<string>(*flag));
 
