@@ -3,7 +3,7 @@
 
 TEST(ParallelSweepTest, NewMissionThrowException) {
     Polygon poly;
-    MissionHelper *mission_helper{new ParallelSweep{poly}};
+    MissionHelper *mission_helper{new GoCenter{poly}};
     std::vector<Mission::MissionItem> mission_item_list;
 
     ASSERT_THROW(mission_helper->new_mission(2, 3, mission_item_list), CannotMakeMission);
@@ -18,7 +18,7 @@ TEST(ParallelSweepTest, NewMission) {
     poly.push_back({1,1});
     poly.push_back({0,1});
 
-    MissionHelper *mission_helper{new ParallelSweep{poly}};
+    MissionHelper *mission_helper{new GoCenter{poly}};
     std::vector<Mission::MissionItem> mission_item_list;
 
     ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
@@ -36,7 +36,7 @@ TEST(ParallelSweepTest, NewMission2) {
     poly.push_back({100,20});
     poly.push_back({0,20});
 
-    MissionHelper *mission_helper{new ParallelSweep{poly}};
+    MissionHelper *mission_helper{new GoCenter{poly}};
     std::vector<Mission::MissionItem> mission_item_list;
 
     ASSERT_NO_THROW(mission_helper->new_mission(1, 1, mission_item_list));
@@ -55,7 +55,7 @@ TEST(ParallelSweepTest, NewMission3) {
     poly.push_back({47.398021,8.546824});
     poly.push_back({47.398021,8.545629});
 
-    MissionHelper *mission_helper{new ParallelSweep{poly}};
+    MissionHelper *mission_helper{new GoCenter{poly}};
     std::vector<Mission::MissionItem> mission_item_list;
 
     ASSERT_NO_THROW(mission_helper->new_mission(1, 1, mission_item_list));
@@ -75,7 +75,7 @@ TEST(ParallelSweepTest, NewMission4) {
     poly.push_back({47.3980,8.5468});
     poly.push_back({47.3980,8.5456});
 
-    MissionHelper *mission_helper{new ParallelSweep{poly}};
+    MissionHelper *mission_helper{new GoCenter{poly}};
     std::vector<Mission::MissionItem> mission_item_list;
 
     ASSERT_NO_THROW(mission_helper->new_mission(1, 1, mission_item_list));

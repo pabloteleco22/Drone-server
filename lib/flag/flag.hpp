@@ -36,17 +36,18 @@ class RandomFlag : public Flag {
                 double get_interval() const;
         };
 
-        inline static const MaxMin default_latitude_deg{10, -10};
-        inline static const MaxMin default_longitude_deg{10, -10};
+        inline static const MaxMin default_latitude_deg_interval{10, -10};
+        inline static const MaxMin default_longitude_deg_interval{10, -10};
 
-        RandomFlag(const MaxMin &latitude_deg_interval=default_latitude_deg, const MaxMin &longitude_deg_interval=default_longitude_deg);
+        RandomFlag(const MaxMin &latitude_deg_interval=default_latitude_deg_interval,
+                   const MaxMin &longitude_deg_interval=default_longitude_deg_interval);
         Position get_flag_position() const override;
         operator std::string() const override;
 
     private:
         Position pos;
-        MaxMin latitude_deg_interval{default_latitude_deg};
-        MaxMin longitude_deg_interval{default_longitude_deg};
+        MaxMin latitude_deg_interval{default_latitude_deg_interval};
+        MaxMin longitude_deg_interval{default_longitude_deg_interval};
 };
 
 class FixedFlag : public Flag {

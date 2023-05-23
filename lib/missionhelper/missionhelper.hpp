@@ -27,7 +27,17 @@ struct MissionHelper {
             Mission::MissionItem::CameraAction camera_action);
 };
 
-struct ParallelSweep : public MissionHelper {
+struct GoCenter : public MissionHelper {
     using MissionHelper::MissionHelper;
     virtual void new_mission(const unsigned int system_id, const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission) const;
+};
+
+struct SpiralSweep : public MissionHelper {
+    SpiralSweep(Polygon area, const double separation) : MissionHelper(area) {
+        this->separation = separation;
+    };
+    virtual void new_mission(const unsigned int system_id, const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission) const;
+
+    private:
+        double separation;
 };

@@ -42,33 +42,31 @@ enum class ProRetCod : int {
 };
 
 class Operation {
-	bool operation_ok;
-	ProRetCod error_code;
+	ProRetCod operation_code;
 	string operation_name;
 	std::mutex mut;
 
 	public:
 		Operation() {
-			this->operation_ok = true;
 			this->operation_name = "";
-			this->error_code = ProRetCod::UNKNOWN_ERROR;
+			this->operation_code = ProRetCod::OK;
 		}
 
 		operator bool() {
 			bool ok;
 
 			mut.lock();
-			ok = operation_ok;
+			ok = ProRetCod::OK == operation_code;
 			mut.unlock();
 
 			return ok;
 		}
 
-		ProRetCod get_error_code() {
+		ProRetCod get_status_code() {
 			ProRetCod cod;
 
 			mut.lock();
-			cod = error_code;
+			cod = operation_code;
 			mut.unlock();
 
 			return cod;
@@ -86,8 +84,7 @@ class Operation {
 
 		void set_failure(const ProRetCod error_code) {
 			mut.lock();
-			this->error_code = error_code;
-			operation_ok = false;
+			this->operation_code = error_code;
 			mut.unlock();
 		}
 
@@ -223,7 +220,10 @@ int main(int argc, char *argv[]) {
 		logger->write(debug, "    " + static_cast<string>(v));
 	}
 
-	MissionHelper *mission_helper{new ParallelSweep{search_area}};
+	geometry::CoordinateTransformation::GlobalCoordinate base{coordinate_transformation.global_from_local({0, 0})};
+	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({2, 2})};
+	logger->write(debug, "Separation: " + std::to_string(separation.latitude_deg - base.latitude_deg));
+	MissionHelper *mission_helper{new SpiralSweep{search_area, separation.latitude_deg - base.latitude_deg}};
 
 	logger->write(info, "The flag is in:\n" + static_cast<string>(*flag));
 
@@ -249,7 +249,7 @@ int main(int argc, char *argv[]) {
 			logger->write(info, "Synchronization point: " + operation.get_name());
 		} else {
 			logger->write(error, "Operation \"" + operation.get_name() + "\" fails");
-			exit(static_cast<int>(operation.get_error_code()));
+			exit(static_cast<int>(operation.get_status_code()));
 		}
 	}};
 	std::barrier<std::function<void()>> sync_point{static_cast<std::ptrdiff_t>(final_systems), sync_handler};

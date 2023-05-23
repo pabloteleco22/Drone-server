@@ -46,10 +46,10 @@ TEST(RandomFlagTest, CheckDefaultPosition) {
         random_flag = new RandomFlag;
         const Flag::Position position{random_flag->get_flag_position()};
 
-        ASSERT_LE(position.latitude_deg, RandomFlag::default_latitude_deg.get_max());
-        ASSERT_GE(position.latitude_deg, RandomFlag::default_latitude_deg.get_min());
-        ASSERT_LE(position.longitude_deg, RandomFlag::default_longitude_deg.get_max());
-        ASSERT_GE(position.longitude_deg, RandomFlag::default_longitude_deg.get_min());
+        ASSERT_LE(position.latitude_deg, RandomFlag::default_latitude_deg_interval.get_max());
+        ASSERT_GE(position.latitude_deg, RandomFlag::default_latitude_deg_interval.get_min());
+        ASSERT_LE(position.longitude_deg, RandomFlag::default_longitude_deg_interval.get_max());
+        ASSERT_GE(position.longitude_deg, RandomFlag::default_longitude_deg_interval.get_min());
 
         delete random_flag;
     }
