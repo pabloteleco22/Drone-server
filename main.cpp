@@ -199,19 +199,22 @@ int main(int argc, char *argv[]) {
 	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate_north_east;
 	global_coordinate_south_west = coordinate_transformation.global_from_local({0, 0});
 	global_coordinate_north_east = coordinate_transformation.global_from_local({20, 90});
+
+	/*
 	RandomFlag::MaxMin latitude_deg{global_coordinate_south_west.latitude_deg, global_coordinate_north_east.latitude_deg};
 	RandomFlag::MaxMin longitude_deg{global_coordinate_south_west.longitude_deg, global_coordinate_north_east.longitude_deg};
 	RandomFlag flag{latitude_deg, longitude_deg};
-	//FixedFlag flag;
 
 	Polygon search_area;
 	search_area.push_back({latitude_deg.get_min(), longitude_deg.get_min()});
 	search_area.push_back({latitude_deg.get_min(), longitude_deg.get_max()});
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_max()});
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_min()});
+	*/
 
-	/*
+	FixedFlag flag{Flag::Position{47.397868, 8.545665}};
 	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
+	Polygon search_area;
 	global_coordinate = coordinate_transformation.global_from_local({0, 0});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({0, 90});
@@ -220,7 +223,6 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({20, 0});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
-	*/
 
 	logger->write(debug, "Search area:");
 	for (auto v : search_area.get_vertex()) {
@@ -476,8 +478,8 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	// Set mission controller
 	operation.set_name("set mission controller");
 
-	SearchController mission_controller{system, flag, [flag]() {
-		logger->write(info, "Flag found:\n" + static_cast<string>(*flag));
+	SearchController mission_controller{system, flag, [flag, system_id]() {
+		logger->write(info, "Flag found by system " + std::to_string(system_id) + ":\n" + static_cast<string>(*flag));
 	}, 1, separation};
 
 	MissionControllerStatus mission_controller_status{mission_controller.mission_control()};
