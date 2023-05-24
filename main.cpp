@@ -100,7 +100,6 @@ struct CheckEnoughSystems {
 	virtual ~CheckEnoughSystems() {}
 	virtual bool exists_enough_systems(const float number_of_systems) = 0;
 	virtual string get_status(const float number_of_systems) = 0;
-	virtual void subtract_system() = 0;
 };
 
 struct PercentageCheck final : public CheckEnoughSystems {
@@ -117,10 +116,6 @@ struct PercentageCheck final : public CheckEnoughSystems {
 	string get_status(const float number_of_systems) override {
 		return "Required percentage " + std::to_string(percentage_required) + "%. Systems in use " +
 															std::to_string(100.0f * number_of_systems / expected_systems) + "%";
-	}
-
-	void subtract_system() {
-
 	}
 
 	private:

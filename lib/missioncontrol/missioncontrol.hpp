@@ -18,7 +18,7 @@ struct MissionController {
     virtual MissionControllerStatus mission_control() = 0;
 };
 
-struct SearchController : MissionController {
+struct SearchController : public MissionController {
     SearchController(std::shared_ptr<mavsdk::System> system, const Flag *flag,
                     std::function<void()> callback, double position_rate,
                     double separation);
