@@ -15,6 +15,7 @@ add_definitions("-Wall -Wextra")
 add_subdirectory(lib/flag)
 add_subdirectory(lib/log)
 add_subdirectory(lib/missionhelper)
+add_subdirectory(lib/missioncontrol)
 add_subdirectory(lib/poly)
 
 # Finds MAVSDK when installed system wide.
@@ -33,6 +34,7 @@ target_link_libraries(drone_server
     Log
     Poly
     MissionHelper
+    MissionControl
 )
 
 #------------------- TEST -------------------#

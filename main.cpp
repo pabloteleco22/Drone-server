@@ -7,6 +7,7 @@
 #include "lib/log/log.hpp"
 #include "lib/poly/polygon.hpp"
 #include "lib/missionhelper/missionhelper.hpp"
+#include "lib/missioncontrol/missioncontrol.hpp"
 #include <thread>
 #include <barrier>
 #include <chrono>
@@ -14,7 +15,7 @@
 #include <string>
 #include <sstream>
 #include <fstream>
-#include <geometry.h>
+#include <mavsdk/geometry.h>
 
 using namespace mavsdk;
 using namespace simple_logger;
@@ -99,6 +100,7 @@ struct CheckEnoughSystems {
 	virtual ~CheckEnoughSystems() {}
 	virtual bool exists_enough_systems(const float number_of_systems) = 0;
 	virtual string get_status(const float number_of_systems) = 0;
+	virtual void subtract_system() = 0;
 };
 
 struct PercentageCheck final : public CheckEnoughSystems {
@@ -117,6 +119,10 @@ struct PercentageCheck final : public CheckEnoughSystems {
 															std::to_string(100.0f * number_of_systems / expected_systems) + "%";
 	}
 
+	void subtract_system() {
+
+	}
+
 	private:
 		float percentage_required;
 		float expected_systems;
@@ -128,7 +134,8 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 
 void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &mut,
 							std::barrier<std::function<void()>> &sync_point, float &final_systems,
-							MissionHelper *mission_helper, CheckEnoughSystems *enough_systems);
+							MissionHelper *mission_helper, CheckEnoughSystems *enough_systems,
+							Flag *flag, double separation);
 
 Logger *logger;
 
@@ -194,8 +201,8 @@ int main(int argc, char *argv[]) {
 	global_coordinate_north_east = coordinate_transformation.global_from_local({20, 90});
 	RandomFlag::MaxMin latitude_deg{global_coordinate_south_west.latitude_deg, global_coordinate_north_east.latitude_deg};
 	RandomFlag::MaxMin longitude_deg{global_coordinate_south_west.longitude_deg, global_coordinate_north_east.longitude_deg};
-	Flag *flag{new RandomFlag{latitude_deg, longitude_deg}};
-	//Flag *flag{new FixedFlag{}};
+	RandomFlag flag{latitude_deg, longitude_deg};
+	//FixedFlag flag;
 
 	Polygon search_area;
 	search_area.push_back({latitude_deg.get_min(), longitude_deg.get_min()});
@@ -226,7 +233,7 @@ int main(int argc, char *argv[]) {
 	MissionHelper *mission_helper{new SpiralSweep{search_area, separation.latitude_deg - base.latitude_deg}};
 	//MissionHelper *mission_helper{new GoCenter{search_area}};
 
-	logger->write(info, "The flag is in:\n" + static_cast<string>(*flag));
+	logger->write(info, "The flag is in:\n" + static_cast<string>(flag));
 
 	CheckEnoughSystems *enough_systems{new PercentageCheck{static_cast<float>(expected_systems), percentage_drones_required}};
 
@@ -259,7 +266,8 @@ int main(int argc, char *argv[]) {
 	for (shared_ptr<System> system : mavsdk.systems()) {
 		threads_for_waiting.push_back(
 			std::thread{drone_handler, system, std::ref(operation), std::ref(mut),
-							std::ref(sync_point), std::ref(final_systems), mission_helper, enough_systems}
+							std::ref(sync_point), std::ref(final_systems), mission_helper,
+							enough_systems, &flag, separation.latitude_deg - base.latitude_deg}
 		);
 
 		std::this_thread::sleep_for(refresh_time);
@@ -275,7 +283,6 @@ int main(int argc, char *argv[]) {
 	delete history_logger;
 	delete enough_systems;
 	delete mission_helper;
-	delete flag;
 
 	return static_cast<int>(ProRetCod::OK);
 }
@@ -348,7 +355,8 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 
 void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &mut,
 							std::barrier<std::function<void()>> &sync_point, float &final_systems,
-							MissionHelper *mission_helper, CheckEnoughSystems *enough_systems) {
+							MissionHelper *mission_helper, CheckEnoughSystems *enough_systems, Flag *flag,
+							double separation) {
 	unsigned int system_id{static_cast<unsigned int>(system->get_system_id())};
 	Telemetry telemetry{system};
 	Action action{system};
@@ -452,6 +460,31 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 
 	if (mission_result == Mission::Result::Success) {
 		logger->write(info, "System " + std::to_string(system_id) + " ready");
+		sync_point.arrive_and_wait();
+	} else {
+		mut.lock();
+		--final_systems;
+		if (not enough_systems->exists_enough_systems(final_systems)) {
+			operation.set_failure(ProRetCod::MISSION_FAILURE);
+		}
+		mut.unlock();
+		logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
+		sync_point.arrive_and_drop();
+		return;
+	}
+
+	// Set mission controller
+	operation.set_name("set mission controller");
+
+	SearchController mission_controller{system, flag, [flag]() {
+		logger->write(info, "Flag found:\n" + static_cast<string>(*flag));
+	}, 1, separation};
+
+	MissionControllerStatus mission_controller_status{mission_controller.mission_control()};
+	//MissionControllerStatus mission_controller_status{MissionControllerStatus::SUCCESS};
+
+	if (mission_controller_status == MissionControllerStatus::SUCCESS) {
+		logger->write(info, "System " + std::to_string(system_id) + " mission controller ready");
 		sync_point.arrive_and_wait();
 	} else {
 		mut.lock();
