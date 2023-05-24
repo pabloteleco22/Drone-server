@@ -227,15 +227,15 @@ int main(int argc, char *argv[]) {
 	geometry::CoordinateTransformation::GlobalCoordinate base{coordinate_transformation.global_from_local({0, 0})};
 	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({5, 0})};
 	logger->write(debug, "Separation: " + std::to_string(separation.latitude_deg - base.latitude_deg));
-	MissionHelper *mission_helper{new SpiralSweep{search_area, separation.latitude_deg - base.latitude_deg}};
+	SpiralSweep mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
 	//MissionHelper *mission_helper{new GoCenter{search_area}};
 
 	logger->write(info, "The flag is in:\n" + static_cast<string>(flag));
 
-	CheckEnoughSystems *enough_systems{new PercentageCheck{static_cast<float>(expected_systems), percentage_drones_required}};
+	PercentageCheck enough_systems{static_cast<float>(expected_systems), percentage_drones_required};
 
 	establish_connections(argc, argv, mavsdk);
-	float final_systems{wait_systems(mavsdk, expected_systems, enough_systems)};
+	float final_systems{wait_systems(mavsdk, expected_systems, &enough_systems)};
 
 	for (shared_ptr<System> s : mavsdk.systems()) {
 		logger->write(debug, "System: " + std::to_string(static_cast<int>(s->get_system_id())) + "\n" +
@@ -263,8 +263,8 @@ int main(int argc, char *argv[]) {
 	for (shared_ptr<System> system : mavsdk.systems()) {
 		threads_for_waiting.push_back(
 			std::thread{drone_handler, system, std::ref(operation), std::ref(mut),
-							std::ref(sync_point), std::ref(final_systems), mission_helper,
-							enough_systems, &flag, separation.latitude_deg - base.latitude_deg}
+							std::ref(sync_point), std::ref(final_systems), &mission_helper,
+							&enough_systems, &flag, separation.latitude_deg - base.latitude_deg}
 		);
 
 		std::this_thread::sleep_for(refresh_time);
@@ -278,8 +278,6 @@ int main(int argc, char *argv[]) {
 	delete standard_logger;
 	delete last_execution_logger;
 	delete history_logger;
-	delete enough_systems;
-	delete mission_helper;
 
 	return static_cast<int>(ProRetCod::OK);
 }
