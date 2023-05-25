@@ -24,7 +24,7 @@ struct MissionController {
 
 struct SearchController : public MissionController {
     SearchController(mavsdk::Telemetry *telemetry, mavsdk::Action *action,
-                    const Flag *flag, std::function<void()> callback,
+                    const Flag *flag, std::function<void(Flag::Position, bool)> callback,
                     double position_rate, double separation);
 
     /**
@@ -36,7 +36,7 @@ struct SearchController : public MissionController {
         mavsdk::Telemetry *telemetry;
         mavsdk::Action *action;
         const Flag *flag;
-        std::function<void()> callback;
+        std::function<void(Flag::Position, bool)> callback;
         double position_rate;
         double separation;
         static std::mutex mut;

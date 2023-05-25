@@ -195,7 +195,6 @@ int main(int argc, char *argv[]) {
 	global_coordinate_south_west = coordinate_transformation.global_from_local({0, 0});
 	global_coordinate_north_east = coordinate_transformation.global_from_local({20, 90});
 
-	/*
 	RandomFlag::MaxMin latitude_deg{global_coordinate_south_west.latitude_deg, global_coordinate_north_east.latitude_deg};
 	RandomFlag::MaxMin longitude_deg{global_coordinate_south_west.longitude_deg, global_coordinate_north_east.longitude_deg};
 	RandomFlag flag{latitude_deg, longitude_deg};
@@ -205,8 +204,8 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({latitude_deg.get_min(), longitude_deg.get_max()});
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_max()});
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_min()});
-	*/
 
+	/*
 	FixedFlag flag{Flag::Position{47.397868, 8.545665}};
 	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
 	Polygon search_area;
@@ -218,6 +217,7 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({20, 0});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	*/
 
 	logger->write(debug, "Search area:");
 	for (auto v : search_area.get_vertex()) {
@@ -471,8 +471,25 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	// Set mission controller
 	operation.set_name("set mission controller");
 
-	SearchController mission_controller{&telemetry, &action, flag, [flag, system_id]() {
-		logger->write(info, "Flag found by system " + std::to_string(system_id) + ":\n" + static_cast<string>(*flag));
+	std::promise<void> prom;
+	std::future fut{prom.get_future()};
+
+	SearchController mission_controller{&telemetry, &action, flag,
+	[system_id, &mission, &telemetry, &prom](Flag::Position flag_position, bool flag_found_by_me) {
+		if (flag_found_by_me) {
+		logger->write(info, "Flag found by system " + std::to_string(system_id) + ": " +
+					  std::to_string(flag_position.latitude_deg) +  ", " + std::to_string(flag_position.longitude_deg));
+		}
+
+		mission.subscribe_mission_progress(nullptr);
+
+		telemetry.subscribe_landed_state([&system_id, &prom, &telemetry](Telemetry::LandedState state) {
+			if (state == Telemetry::LandedState::OnGround) {
+				logger->write(info, "System " + std::to_string(system_id) + " on ground");
+				telemetry.subscribe_landed_state(nullptr);
+				prom.set_value();
+			}
+		});
 	}, 1, separation};
 
 	MissionControllerStatus mission_controller_status{mission_controller.mission_control()};
@@ -616,15 +633,11 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	// Wait until the mission ends
 	operation.set_name("wait until the mission ends");
 
-	std::promise<void> prom;
-	std::future fut{prom.get_future()};
-
-	mission.subscribe_mission_progress([&system_id, &prom, &mission](Mission::MissionProgress mis_prog) {
+	mission.subscribe_mission_progress([&system_id, &mission](Mission::MissionProgress mis_prog) {
 		logger->write(info, "System " + std::to_string(system_id) + " mission status: " + std::to_string(mis_prog.current) + "/" + std::to_string(mis_prog.total));
 
 		if (mis_prog.current == mis_prog.total) {
 			mission.subscribe_mission_progress(nullptr);
-			prom.set_value();
 		}
 	});
 
