@@ -8,7 +8,9 @@ TEST(LogLevelTest, LevelHierarchy) {
     Info info;
     Warning warning;
     Error error;
+    Critical critical;
 
+    ASSERT_GT(critical, error);
     ASSERT_GT(error, warning);
     ASSERT_GT(warning, info);
     ASSERT_GT(info, debug);

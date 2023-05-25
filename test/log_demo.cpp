@@ -13,6 +13,7 @@ int main() {
     Info info;
     Warning warning;
     Error error;
+    Critical critical;
 
     UserCustomFilter user_filter{
         [&warning](const Level &level) {
@@ -29,6 +30,7 @@ int main() {
     standard_logger->write(info, "Info message");
     standard_logger->write(warning, "Warning message");
     standard_logger->write(error, "Error message");
+    standard_logger->write(critical, "Critical message");
 
     cout << endl << "Custom filter" << endl;
     standard_logger->set_level_filter(&user_filter);
@@ -37,6 +39,7 @@ int main() {
     standard_logger->write(info, "Info message");
     standard_logger->write(warning, "Warning message");
     standard_logger->write(error, "Error message");
+    standard_logger->write(critical, "Critical message");
 
     delete standard_logger;
 
@@ -49,6 +52,7 @@ int main() {
     standard_stream_logger->write(info, "Info message");
     standard_stream_logger->write(warning, "Warning message");
     standard_stream_logger->write(error, "Error message");
+    standard_stream_logger->write(critical, "Critical message");
 
     cout << endl << "Custom filter" << endl;
     standard_stream_logger->set_level_filter(&user_filter);
@@ -57,6 +61,7 @@ int main() {
     standard_stream_logger->write(info, "Info message");
     standard_stream_logger->write(warning, "Warning message");
     standard_stream_logger->write(error, "Error message");
+    standard_stream_logger->write(critical, "Critical message");
 
     delete standard_stream_logger;
 
@@ -70,6 +75,7 @@ int main() {
     stream_logger->write(info, "Info message");
     stream_logger->write(warning, "Warning message");
     stream_logger->write(error, "Error message");
+    stream_logger->write(critical, "Critical message");
 
     stream_logger->write(info, "Custom filter");
     stream_logger->set_level_filter(&user_filter);
@@ -78,6 +84,7 @@ int main() {
     stream_logger->write(info, "Info message");
     stream_logger->write(warning, "Warning message");
     stream_logger->write(error, "Error message");
+    stream_logger->write(critical, "Critical message");
 
     delete stream_logger;
 
@@ -93,6 +100,7 @@ int main() {
     thread_logger.write(info, "Info message");
     thread_logger.write(warning, "Warning message");
     thread_logger.write(error, "Error message");
+    thread_logger.write(critical, "Critical message");
 
     cout << endl << "Custom filter" << endl;
     thread_logger.set_level_filter(&user_filter);
@@ -101,6 +109,7 @@ int main() {
     thread_logger.write(info, "Info message");
     thread_logger.write(warning, "Warning message");
     thread_logger.write(error, "Error message");
+    thread_logger.write(critical, "Critical message");
 
     delete thread_standard_logger;
 
@@ -118,6 +127,7 @@ int main() {
     thread_logger.write(info, "Info message");
     thread_logger.write(warning, "Warning message");
     thread_logger.write(error, "Error message");
+    thread_logger.write(critical, "Critical message");
 
     thread_logger.write(info, "Custom filter");
     thread_logger.set_level_filter(&user_filter);
@@ -126,6 +136,7 @@ int main() {
     thread_logger.write(info, "Info message");
     thread_logger.write(warning, "Warning message");
     thread_logger.write(error, "Error message");
+    thread_logger.write(critical, "Critical message");
 
     delete thread_stream_logger;
 
@@ -163,6 +174,7 @@ int main() {
     bi_logger.write(info, "Info message");
     bi_logger.write(warning, "Warning message");
     bi_logger.write(error, "Error message");
+    bi_logger.write(critical, "Critical message");
 
     bi_logger.write(info, "Custom filter");
     bi_logger.set_level_filter(&user_filter);
@@ -171,6 +183,7 @@ int main() {
     bi_logger.write(info, "Info message");
     bi_logger.write(warning, "Warning message");
     bi_logger.write(error, "Error message");
+    bi_logger.write(critical, "Critical message");
 
     delete std_logger;
     delete str_logger;

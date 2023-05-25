@@ -136,6 +136,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 
 Logger *logger;
 
+Critical critical;
 Error error;
 Warning warning;
 Info info;
@@ -198,12 +199,12 @@ int main(int argc, char *argv[]) {
 	Mavsdk mavsdk;
 
 	geometry::CoordinateTransformation coordinate_transformation{{47.3978409, 8.5456286}};
-	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate_south_west;
-	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate_north_east;
-	global_coordinate_south_west = coordinate_transformation.global_from_local({0, 0});
-	global_coordinate_north_east = coordinate_transformation.global_from_local({20, 90});
 
 	/*
+	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate_south_west;
+	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate_north_east;
+	global_coordinate_south_west = coordinate_transformation.global_from_local({-40, -40});
+	global_coordinate_north_east = coordinate_transformation.global_from_local({30, 30});
 	RandomFlag::MaxMin latitude_deg{global_coordinate_south_west.latitude_deg, global_coordinate_north_east.latitude_deg};
 	RandomFlag::MaxMin longitude_deg{global_coordinate_south_west.longitude_deg, global_coordinate_north_east.longitude_deg};
 	RandomFlag flag{latitude_deg, longitude_deg};
@@ -214,18 +215,28 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_min()});
 	*/
 
-	FixedFlag flag{Flag::Position{47.397864, 8.546610}};
-	//FixedFlag flag{Flag::Position{100, 100}};
+	//FixedFlag flag{Flag::Position{47.397953, 8.545455}}; // Encuentra para un rectángulo de 20x90
+	FixedFlag flag{Flag::Position{100, 100}};
 	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
 	Polygon search_area;
-	global_coordinate = coordinate_transformation.global_from_local({0, 0});
+	global_coordinate = coordinate_transformation.global_from_local({-10, -10});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
-	global_coordinate = coordinate_transformation.global_from_local({0, 90});
+	global_coordinate = coordinate_transformation.global_from_local({-10, 10});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
-	global_coordinate = coordinate_transformation.global_from_local({20, 90});
+	global_coordinate = coordinate_transformation.global_from_local({10, 10});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
-	global_coordinate = coordinate_transformation.global_from_local({20, 0});
+	global_coordinate = coordinate_transformation.global_from_local({10, -10});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	/*
+	global_coordinate = coordinate_transformation.global_from_local({-40, -40});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({-40, 30});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({30, 30});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({30, -40});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	*/
 
 	logger->write(debug, "Search area:");
 	for (auto v : search_area.get_vertex()) {
@@ -309,7 +320,7 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 		} else {
 			std::ostringstream os;
 			os << connection_result;
-			logger->write(error, "Connection failed on " + url + ": " + os.str());
+			logger->write(critical, "Connection failed on " + url + ": " + os.str());
 
 			exit(static_cast<int>(ProRetCod::CONNECTION_FAILED));
 		}
@@ -345,7 +356,7 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 		if (enough_systems->exists_enough_systems(discovered_systems)) {
 			logger->write(info, "Can continue");
 		} else {
-			logger->write(error, "Cannot continue");
+			logger->write(critical, "Cannot continue");
 
 			exit(static_cast<int>(ProRetCod::NO_SYSTEMS_FOUND));
 		}
@@ -374,10 +385,10 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	while ((not all_ok) and (attempts > 0)) {
 		--attempts;
 
-		logger->write(error, "Not all OK in system " + std::to_string(system_id) + ". Remaining attempts: " + std::to_string(attempts));
+		logger->write(warning, "Some failure has occurred in the system " + std::to_string(system_id) + ". Remaining attempts: " + std::to_string(attempts));
 		Telemetry::Health health{telemetry.health()};
 
-		logger->write(info, "System " + std::to_string(system_id) + "\n" +
+		logger->write(warning, "System " + std::to_string(system_id) + "\n" +
 			"    is accelerometer calibration OK: " + string(health.is_accelerometer_calibration_ok ? "true" : "false") + "\n" +
 			"    is armable: " + string(health.is_armable ? "true" : "false") + "\n" +
 			"    is global position OK: " + string(health.is_global_position_ok ? "true" : "false") + "\n" +
@@ -402,7 +413,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 			operation.set_failure(ProRetCod::TELEMETRY_FAILURE);
 		}
 		mut.unlock();
-		logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
+		logger->write(error, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
 		sync_point.arrive_and_drop();
 		return;
 	}
@@ -419,7 +430,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 
 		std::ostringstream os;
 		os << mission_result;
-		logger->write(error, "Error clearing existing missions on system " + std::to_string(system_id) + ": " + os.str());
+		logger->write(warning, "Error clearing existing missions on system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
 
 		std::this_thread::sleep_for(REFRESH_TIME);
 
@@ -436,7 +447,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 			operation.set_failure(ProRetCod::MISSION_FAILURE);
 		}
 		mut.unlock();
-		logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
+		logger->write(error, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
 		sync_point.arrive_and_drop();
 		return;
 	}
@@ -453,7 +464,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 
 		std::ostringstream os;
 		os << mission_result;
-		logger->write(error, "Error in setting the return to launch after mission on system " + std::to_string(system_id) + ": " + os.str());
+		logger->write(warning, "Error in setting the return to launch after mission on system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
 
 		std::this_thread::sleep_for(REFRESH_TIME);
 
@@ -470,7 +481,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 			operation.set_failure(ProRetCod::MISSION_FAILURE);
 		}
 		mut.unlock();
-		logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
+		logger->write(error, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
 		sync_point.arrive_and_drop();
 		return;
 	}
@@ -487,7 +498,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 
 		std::ostringstream os;
 		os << action_result;
-		logger->write(error, "Error in setting the return to launch altitude on system " + std::to_string(system_id) + ": " + os.str());
+		logger->write(warning, "Error in setting the return to launch altitude on system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
 
 		std::this_thread::sleep_for(REFRESH_TIME);
 
@@ -504,7 +515,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 			operation.set_failure(ProRetCod::ACTION_FAILURE);
 		}
 		mut.unlock();
-		logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
+		logger->write(error, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
 		sync_point.arrive_and_drop();
 		return;
 	}
@@ -525,7 +536,6 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	}, 1, separation};
 
 	MissionControllerStatus mission_controller_status{mission_controller.mission_control()};
-	//MissionControllerStatus mission_controller_status{MissionControllerStatus::SUCCESS};
 
 	if (mission_controller_status == MissionControllerStatus::SUCCESS) {
 		logger->write(info, "System " + std::to_string(system_id) + " mission controller ready");
@@ -537,7 +547,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 			operation.set_failure(ProRetCod::MISSION_FAILURE);
 		}
 		mut.unlock();
-		logger->write(warning, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
+		logger->write(error, "System " + std::to_string(system_id) + " discarded. " + enough_systems->get_status(final_systems));
 		sync_point.arrive_and_drop();
 		return;
 	}
@@ -553,7 +563,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 		if (std::string(e.what()) == "CannotMakeMission: The system ID must be less than or equal to the number of systems") {
 			mission_helper->new_mission(final_systems, final_systems, mission_item_vector);
 		} else {
-			logger->write(error, "System " + std::to_string(system_id) + " cannot make a mission: " + e.what());
+			logger->write(critical, "System " + std::to_string(system_id) + " cannot make a mission: " + e.what());
 
 			operation.set_failure(ProRetCod::ACTION_FAILURE);
 		}
@@ -583,7 +593,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 
 		std::ostringstream os;
 		os << mission_result;
-		logger->write(error, "Error uploading mission plan to system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
+		logger->write(warning, "Error uploading mission plan to system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
 
 		mut.lock();
 		std::this_thread::sleep_for(REFRESH_TIME);
@@ -596,7 +606,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	} else {
 		std::ostringstream os;
 		os << mission_result;
-		logger->write(error, "Error uploading mission plan to system " + std::to_string(system_id) + ": " + os.str());
+		logger->write(critical, "Error uploading mission plan to system " + std::to_string(system_id) + ": " + os.str());
 
 		operation.set_failure(ProRetCod::MISSION_FAILURE);
 	}
@@ -615,7 +625,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 
 		std::ostringstream os;
 		os << action_result;
-		logger->write(error, "Error arming system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
+		logger->write(warning, "Error arming system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
 
 		std::this_thread::sleep_for(REFRESH_TIME);
 
@@ -625,7 +635,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	if (action_result == Action::Result::Success) {
 		logger->write(info, "System " + std::to_string(system_id) + " armed");
 	} else {
-		logger->write(warning, "System " + std::to_string(system_id) + " cannot be armed");
+		logger->write(critical, "System " + std::to_string(system_id) + " cannot be armed");
 
 		operation.set_failure(ProRetCod::ACTION_FAILURE);
 	}
@@ -644,7 +654,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 		std::stringstream os;
 		os << mission_result;
 
-		logger->write(error, "Error starting mission on system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
+		logger->write(warning, "Error starting mission on system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
 
 		std::this_thread::sleep_for(REFRESH_TIME);
 		
@@ -656,7 +666,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	} else {
 		std::ostringstream os;
 		os << mission_result;
-		logger->write(error, "Error starting mission on system " + std::to_string(system_id) + ": " + os.str());
+		logger->write(critical, "Error starting mission on system " + std::to_string(system_id) + ": " + os.str());
 
   		operation.set_failure(ProRetCod::MISSION_FAILURE);
 	}

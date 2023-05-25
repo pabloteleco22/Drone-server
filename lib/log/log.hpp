@@ -89,6 +89,21 @@ struct Error : public Level {
     }
 };
 
+struct Critical : public Level {
+    using Level::Level;
+    using Level::operator>=;
+    using Level::operator>;
+    using Level::operator<=;
+    using Level::operator<;
+    using Level::operator==;
+    using Level::operator!=;
+    Critical() {
+        level_number = 229;
+        color = "\033[1;95m";
+        level_name = "Critical";
+    }
+};
+
 /** Level filters */
 struct LevelFilter {
     virtual bool filter(const Level &level) const = 0;
