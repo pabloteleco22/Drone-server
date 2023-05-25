@@ -198,12 +198,12 @@ int main(int argc, char *argv[]) {
 	Mavsdk mavsdk;
 
 	geometry::CoordinateTransformation coordinate_transformation{{47.3978409, 8.5456286}};
-	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate_south_west;
-	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate_north_east;
-	global_coordinate_south_west = coordinate_transformation.global_from_local({0, 0});
-	global_coordinate_north_east = coordinate_transformation.global_from_local({20, 90});
 
 	/*
+	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate_south_west;
+	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate_north_east;
+	global_coordinate_south_west = coordinate_transformation.global_from_local({-40, -40});
+	global_coordinate_north_east = coordinate_transformation.global_from_local({30, 30});
 	RandomFlag::MaxMin latitude_deg{global_coordinate_south_west.latitude_deg, global_coordinate_north_east.latitude_deg};
 	RandomFlag::MaxMin longitude_deg{global_coordinate_south_west.longitude_deg, global_coordinate_north_east.longitude_deg};
 	RandomFlag flag{latitude_deg, longitude_deg};
@@ -214,17 +214,17 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_min()});
 	*/
 
-	FixedFlag flag{Flag::Position{47.397864, 8.546610}};
+	FixedFlag flag{Flag::Position{47.397953, 8.545455}}; // Encuentra para un rectángulo de 20x90
 	//FixedFlag flag{Flag::Position{100, 100}};
 	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
 	Polygon search_area;
-	global_coordinate = coordinate_transformation.global_from_local({0, 0});
+	global_coordinate = coordinate_transformation.global_from_local({-40, -40});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
-	global_coordinate = coordinate_transformation.global_from_local({0, 90});
+	global_coordinate = coordinate_transformation.global_from_local({-40, 30});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
-	global_coordinate = coordinate_transformation.global_from_local({20, 90});
+	global_coordinate = coordinate_transformation.global_from_local({30, 30});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
-	global_coordinate = coordinate_transformation.global_from_local({20, 0});
+	global_coordinate = coordinate_transformation.global_from_local({30, -40});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 
 	logger->write(debug, "Search area:");
@@ -374,7 +374,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	while ((not all_ok) and (attempts > 0)) {
 		--attempts;
 
-		logger->write(error, "Not all OK in system " + std::to_string(system_id) + ". Remaining attempts: " + std::to_string(attempts));
+		logger->write(error, "Some failure has occurred in the system " + std::to_string(system_id) + ". Remaining attempts: " + std::to_string(attempts));
 		Telemetry::Health health{telemetry.health()};
 
 		logger->write(info, "System " + std::to_string(system_id) + "\n" +
