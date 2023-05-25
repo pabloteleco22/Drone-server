@@ -471,7 +471,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	// Set mission controller
 	operation.set_name("set mission controller");
 
-	SearchController mission_controller{system, flag, [flag, system_id]() {
+	SearchController mission_controller{&telemetry, &action, flag, [flag, system_id]() {
 		logger->write(info, "Flag found by system " + std::to_string(system_id) + ":\n" + static_cast<string>(*flag));
 	}, 1, separation};
 

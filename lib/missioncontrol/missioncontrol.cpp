@@ -2,19 +2,18 @@
 
 #include <cmath>
 
-SearchController::SearchController(std::shared_ptr<mavsdk::System> system,
+bool SearchController::flag_found{false};
+std::mutex SearchController::mut{};
+
+SearchController::SearchController(mavsdk::Telemetry *telemetry, mavsdk::Action *action,
                     const Flag *flag, std::function<void()> callback,
                     double position_rate, double separation) {
-    this->system = system;
-    this->telemetry = new mavsdk::Telemetry{system};
+    this->telemetry = telemetry;
+    this->action = action;
     this->flag = flag;
     this->callback = callback;
     this->position_rate = position_rate;
     this->separation = separation;
-}
-
-SearchController::~SearchController() {
-    delete telemetry;
 }
 
 MissionControllerStatus SearchController::mission_control() {
@@ -26,10 +25,26 @@ MissionControllerStatus SearchController::mission_control() {
         // Si la posición está lo suficientemente cerca de la bandera
         // se llama al callback
         Flag::Position flag_pos{this->flag->get_flag_position()};
+        bool flag_found;
         if ((std::fabs(pos.latitude_deg - flag_pos.latitude_deg) < separation) and
         (std::fabs(pos.longitude_deg - flag_pos.longitude_deg) < separation)) {
-            this->telemetry->subscribe_position(nullptr);
             this->callback();
+            
+            this->mut.lock();
+            this->flag_found = true;
+            flag_found = true;
+            this->mut.unlock();
+        } else {
+            this->mut.lock();
+            flag_found = this->flag_found;
+            this->mut.unlock();
+        }
+
+        //cout << "System " << std::to_string(this->system->get_system_id()) << " " << std::boolalpha << flag_found << endl;
+        if (flag_found) {
+            this->telemetry->subscribe_position(nullptr);
+
+            this->action->return_to_launch_async([](mavsdk::Action::Result) {});
         }
     }
     );

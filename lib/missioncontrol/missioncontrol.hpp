@@ -2,9 +2,13 @@
 
 #include <mavsdk/mavsdk.h>
 #include <mavsdk/plugins/telemetry/telemetry.h>
+#include <mavsdk/plugins/mission/mission.h>
+#include <mavsdk/plugins/action/action.h>
+
 #include "../flag/flag.hpp"
 #include <memory>
 #include <functional>
+#include <mutex>
 
 enum class MissionControllerStatus : int{
     SUCCESS = 0,
@@ -19,10 +23,9 @@ struct MissionController {
 };
 
 struct SearchController : public MissionController {
-    SearchController(std::shared_ptr<mavsdk::System> system, const Flag *flag,
-                    std::function<void()> callback, double position_rate,
-                    double separation);
-    ~SearchController();
+    SearchController(mavsdk::Telemetry *telemetry, mavsdk::Action *action,
+                    const Flag *flag, std::function<void()> callback,
+                    double position_rate, double separation);
 
     /**
      * @brief Asynchronous method that controls the execution of the mission
@@ -30,10 +33,12 @@ struct SearchController : public MissionController {
     MissionControllerStatus mission_control() override;
 
     private:
-        std::shared_ptr<mavsdk::System> system;
+        mavsdk::Telemetry *telemetry;
+        mavsdk::Action *action;
         const Flag *flag;
         std::function<void()> callback;
         double position_rate;
-        mavsdk::Telemetry *telemetry;
         double separation;
+        static std::mutex mut;
+        static bool flag_found;
 };
