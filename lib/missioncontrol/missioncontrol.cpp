@@ -5,11 +5,11 @@
 bool SearchController::flag_found{false};
 std::mutex SearchController::mut{};
 
-SearchController::SearchController(mavsdk::Telemetry *telemetry, mavsdk::Action *action,
-                    const Flag *flag, std::function<void(Flag::Position, bool)> callback,
+SearchController::SearchController(mavsdk::Telemetry *telemetry,
+                    const Flag *flag,
+                    std::function<void(Flag::Position, bool)> callback,
                     double position_rate, double separation) {
     this->telemetry = telemetry;
-    this->action = action;
     this->flag = flag;
     this->callback = callback;
     this->position_rate = position_rate;
@@ -41,8 +41,6 @@ MissionControllerStatus SearchController::mission_control() {
 
         if (flag_found) {
             this->telemetry->subscribe_position(nullptr);
-
-            this->action->return_to_launch_async([](mavsdk::Action::Result) {});
 
             this->callback(flag_pos, flag_found_by_me);
         }

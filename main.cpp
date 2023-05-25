@@ -176,6 +176,12 @@ int main(int argc, char *argv[]) {
 
 	logger = new BiLogger{&thread_standard_logger, &stream_loggers};
 
+	UserCustomFilter filter{[](const Level &level) {
+		return level > debug;
+	}};
+
+	logger->set_level_filter(&filter);
+
 	// Constants
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
 
@@ -197,18 +203,19 @@ int main(int argc, char *argv[]) {
 	global_coordinate_south_west = coordinate_transformation.global_from_local({0, 0});
 	global_coordinate_north_east = coordinate_transformation.global_from_local({20, 90});
 
+	/*
 	RandomFlag::MaxMin latitude_deg{global_coordinate_south_west.latitude_deg, global_coordinate_north_east.latitude_deg};
 	RandomFlag::MaxMin longitude_deg{global_coordinate_south_west.longitude_deg, global_coordinate_north_east.longitude_deg};
 	RandomFlag flag{latitude_deg, longitude_deg};
-
 	Polygon search_area;
 	search_area.push_back({latitude_deg.get_min(), longitude_deg.get_min()});
 	search_area.push_back({latitude_deg.get_min(), longitude_deg.get_max()});
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_max()});
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_min()});
+	*/
 
-	/*
-	FixedFlag flag{Flag::Position{47.397868, 8.545665}};
+	FixedFlag flag{Flag::Position{47.397864, 8.546610}};
+	//FixedFlag flag{Flag::Position{100, 100}};
 	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
 	Polygon search_area;
 	global_coordinate = coordinate_transformation.global_from_local({0, 0});
@@ -219,7 +226,6 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({20, 0});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
-	*/
 
 	logger->write(debug, "Search area:");
 	for (auto v : search_area.get_vertex()) {
@@ -230,9 +236,8 @@ int main(int argc, char *argv[]) {
 	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({5, 0})};
 	logger->write(debug, "Separation: " + std::to_string(separation.latitude_deg - base.latitude_deg));
 	SpiralSweep mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
-	//MissionHelper *mission_helper{new GoCenter{search_area}};
 
-	logger->write(info, "The flag is in:\n" + static_cast<string>(flag));
+	logger->write(debug, "The flag is in:\n" + static_cast<string>(flag));
 
 	PercentageCheck enough_systems{static_cast<float>(expected_systems), PERCENTAGE_DRONES_REQUIRED};
 
@@ -507,25 +512,16 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 	// Set mission controller
 	operation.set_name("set mission controller");
 
-	std::promise<void> prom;
-	std::future fut{prom.get_future()};
-
-	SearchController mission_controller{&telemetry, &action, flag,
-	[system_id, &mission, &telemetry, &prom](Flag::Position flag_position, bool flag_found_by_me) {
+	SearchController mission_controller{&telemetry, flag,
+	[system_id, &action, &mission](Flag::Position flag_position, bool flag_found_by_me) {
 		if (flag_found_by_me) {
 		logger->write(info, "Flag found by system " + std::to_string(system_id) + ": " +
 					  std::to_string(flag_position.latitude_deg) +  ", " + std::to_string(flag_position.longitude_deg));
 		}
 
+		action.return_to_launch_async([](mavsdk::Action::Result) {});
 		mission.subscribe_mission_progress(nullptr);
 
-		telemetry.subscribe_landed_state([&system_id, &prom, &telemetry](Telemetry::LandedState state) {
-			if (state == Telemetry::LandedState::OnGround) {
-				logger->write(info, "System " + std::to_string(system_id) + " on ground");
-				telemetry.subscribe_landed_state(nullptr);
-				prom.set_value();
-			}
-		});
 	}, 1, separation};
 
 	MissionControllerStatus mission_controller_status{mission_controller.mission_control()};
@@ -678,7 +674,30 @@ void drone_handler(shared_ptr<System> system, Operation &operation, std::mutex &
 		}
 	});
 
-	fut.get();
+	std::promise<void> prom_in_air;
+	std::future fut_in_air{prom_in_air.get_future()};
+
+	telemetry.subscribe_landed_state([&system_id, &prom_in_air, &telemetry](Telemetry::LandedState state) {
+		if (state == Telemetry::LandedState::InAir) {
+			telemetry.subscribe_landed_state(nullptr);
+			prom_in_air.set_value();
+		}
+	});
+
+	fut_in_air.get();
+
+	std::promise<void> prom_on_ground;
+	std::future fut_on_ground{prom_on_ground.get_future()};
+
+	telemetry.subscribe_landed_state([&system_id, &prom_on_ground, &telemetry](Telemetry::LandedState state) {
+		if (state == Telemetry::LandedState::OnGround) {
+			logger->write(info, "System " + std::to_string(system_id) + " on ground");
+			telemetry.subscribe_landed_state(nullptr);
+			prom_on_ground.set_value();
+		}
+	});
+
+	fut_on_ground.get();
 
 	sync_point.arrive_and_wait();
 }
