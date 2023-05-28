@@ -16,6 +16,7 @@ add_subdirectory(lib/flag)
 add_subdirectory(lib/log)
 add_subdirectory(lib/missionhelper)
 add_subdirectory(lib/missioncontrol)
+add_subdirectory(lib/operation)
 add_subdirectory(lib/poly)
 
 # Finds MAVSDK when installed system wide.
@@ -35,6 +36,7 @@ target_link_libraries(drone_server
     Poly
     MissionHelper
     MissionControl
+    Operation
 )
 
 #------------------- TEST -------------------#
@@ -72,6 +74,16 @@ target_link_libraries(missionhelper_test
     Poly
 )
 
+##------------------ Operation test ------------------##
+add_executable(operation_test
+    test/operation_test.cpp
+)
+
+target_link_libraries(operation_test
+    GTest::gtest_main
+    Operation
+)
+
 ##------------------ Log test ------------------##
 add_executable(log_test
     test/log_test.cpp
@@ -91,7 +103,7 @@ target_link_libraries(log_demo
     Log
 )
 
-##------------------ Poly demo ------------------##
+##------------------ Poly test ------------------##
 add_executable(poly_test
     test/poly_test.cpp
 )
