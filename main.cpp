@@ -32,31 +32,62 @@ const float PERCENTAGE_DRONES_REQUIRED{66.0f};
 const unsigned int MAX_ATTEMPTS{10};
 const float BASE_RETURN_TO_LAUNCH_ALTITUDE{10.0f};
 
-struct CheckEnoughSystems {
-	virtual ~CheckEnoughSystems() {}
-	virtual bool exists_enough_systems(const float number_of_systems) = 0;
-	virtual string get_status(const float number_of_systems) = 0;
+class CheckEnoughSystems {
+	protected:
+	 	mutable mutex mut;
+		const float expected_systems;
+		float number_of_systems{0};
+
+	public:
+		CheckEnoughSystems(float expected_systems) : expected_systems{expected_systems} {}
+		virtual ~CheckEnoughSystems() {}
+		virtual bool exists_enough_systems() const = 0;
+		virtual string get_status() const = 0;
+		virtual void append_system(float num=1) {
+			mut.lock();
+			number_of_systems += num;
+			mut.unlock();
+		}
+		virtual void subtract_system(float num=1) {
+			mut.lock();
+			number_of_systems -= num;
+			mut.unlock();
+		}
+		virtual float get_number_of_systems() const {
+			mut.lock();
+			float n{number_of_systems};
+			mut.unlock();
+
+			return n;
+		}
 };
 
 struct PercentageCheck final : public CheckEnoughSystems {
-	PercentageCheck(const float expected_systems, const float percentage_drones_required=100.0f) {
-		this->expected_systems = expected_systems;
+	PercentageCheck(const float expected_systems, const float percentage_drones_required=100.0f) :
+			CheckEnoughSystems(expected_systems) {
 		this->percentage_required = percentage_drones_required;
 		required_systems = expected_systems * percentage_drones_required / 100.0f;
 	}
 
-	bool exists_enough_systems(const float number_of_systems) override {
-		return number_of_systems >= required_systems;
+	bool exists_enough_systems() const override {
+		mut.lock();
+		bool exist{number_of_systems >= required_systems};
+		mut.unlock();
+
+		return exist;
 	}
 
-	string get_status(const float number_of_systems) override {
-		return "Required percentage " + std::to_string(percentage_required) + "%. Systems in use " +
-															std::to_string(100.0f * number_of_systems / expected_systems) + "%";
+	string get_status() const override {
+		mut.lock();
+		string status{"Required percentage " + std::to_string(percentage_required) + "%. Systems in use " +
+															std::to_string(100.0f * number_of_systems / expected_systems) + "%"};
+		mut.unlock();
+
+		return status;
 	}
 
 	private:
 		float percentage_required;
-		float expected_systems;
 		float required_systems;
 };
 
@@ -73,7 +104,7 @@ struct CheckSystemHealthArgs {
 		this->enough_systems = enough_systems;
 	}
 };
-void operation_check_system_health(OperationTools &operation, void *operation_args);
+ProRetCod operation_check_system_health(OperationTools &operation, void *operation_args);
 
 struct ClearExistingMissionsArgs {
 	unsigned int system_id;
@@ -87,7 +118,7 @@ struct ClearExistingMissionsArgs {
 		this->enough_systems = enough_systems;
 	}
 };
-void operation_clear_existing_missions(OperationTools &operation, void *operation_args);
+ProRetCod operation_clear_existing_missions(OperationTools &operation, void *operation_args);
 
 struct ReturnToLaunchArgs {
 	unsigned int system_id;
@@ -101,7 +132,7 @@ struct ReturnToLaunchArgs {
 		this->enough_systems = enough_systems;
 	}
 };
-void operation_return_to_launch(OperationTools &operation, void *operation_args);
+ProRetCod operation_return_to_launch(OperationTools &operation, void *operation_args);
 
 struct ReturnToLaunchAltitudeArgs {
 	unsigned int system_id;
@@ -115,7 +146,7 @@ struct ReturnToLaunchAltitudeArgs {
 		this->enough_systems = enough_systems;
 	}
 };
-void operation_return_to_launch_altitude(OperationTools &operation, void *operation_args);
+ProRetCod operation_return_to_launch_altitude(OperationTools &operation, void *operation_args);
 
 struct SetMissionControllerArgs {
 	unsigned int system_id;
@@ -123,39 +154,45 @@ struct SetMissionControllerArgs {
 	Flag *flag;
 	Mission *mission;
 	Action *action;
+	MissionController *mission_controller;
 	CheckEnoughSystems *enough_systems;
 	double separation;
 
 	SetMissionControllerArgs(unsigned int system_id, Telemetry *telemetry, Action *action,
-			Mission *mission, Flag *flag, CheckEnoughSystems *enough_systems, double separation) {
+			Mission *mission, Flag *flag, MissionController *mission_controller, CheckEnoughSystems *enough_systems, double separation) {
 		this->system_id = system_id;
 		this->telemetry = telemetry;
 		this->action = action;
 		this->mission = mission;
 		this->flag = flag;
+		this->mission_controller = mission_controller;
 		this->enough_systems = enough_systems;
 		this->separation = separation;
 	}
 };
-void operation_set_mission_controller(OperationTools &operation, void *operation_args);
+ProRetCod operation_set_mission_controller(OperationTools &operation, void *operation_args);
 
 struct MakeMissionPlanArgs {
 	unsigned int system_id;
 	MissionHelper *mission_helper;
 	Mission::MissionPlan *mission_plan;
+	CheckEnoughSystems *enough_systems;
 
-	MakeMissionPlanArgs(unsigned int system_id, MissionHelper *mission_helper, Mission::MissionPlan *mission_plan) {
+	MakeMissionPlanArgs(unsigned int system_id, MissionHelper *mission_helper, Mission::MissionPlan *mission_plan,
+						CheckEnoughSystems *enough_systems) {
 		this->system_id = system_id;
 		this->mission_helper = mission_helper;
 		this->mission_plan = mission_plan;
+		this->enough_systems = enough_systems;
 	}
 };
-void operation_make_mission_plan(OperationTools &operation, void *operation_args);
+ProRetCod operation_make_mission_plan(OperationTools &operation, void *operation_args);
 
 struct SetMissionPlanArgs {
 	unsigned int system_id;
 	Mission *mission;
 	Mission::MissionPlan *mission_plan;
+	static mutex mut;
 
 	SetMissionPlanArgs(unsigned int system_id, Mission *mission,
 			Mission::MissionPlan *mission_plan) {
@@ -164,7 +201,8 @@ struct SetMissionPlanArgs {
 		this->mission_plan = mission_plan;
 	}
 };
-void operation_set_mission_plan(OperationTools &operation, void *operation_args);
+mutex SetMissionPlanArgs::mut{};
+ProRetCod operation_set_mission_plan(OperationTools &operation, void *operation_args);
 
 struct ArmSystemsArgs {
 	unsigned int system_id;
@@ -175,7 +213,7 @@ struct ArmSystemsArgs {
 		this->action = action;
 	}
 };
-void operation_arm_systems(OperationTools &operation, void *operation_args);
+ProRetCod operation_arm_systems(OperationTools &operation, void *operation_args);
 
 struct StartMissionArgs {
 	unsigned int system_id;
@@ -186,23 +224,29 @@ struct StartMissionArgs {
 		this->mission = mission;
 	}
 };
-void operation_start_mission(OperationTools &operation, void *operation_args);
+ProRetCod operation_start_mission(OperationTools &operation, void *operation_args);
 
 struct WaitUntilMissionEndsArgs {
 	unsigned int system_id;
 	Telemetry *telemetry;
 	Mission *mission;
+
+	WaitUntilMissionEndsArgs(unsigned int system_id, Telemetry *telemetry,
+							Mission *mission) {
+		this->system_id = system_id;
+		this->telemetry = telemetry;
+		this->mission = mission;
+	}
 };
-void operation_wait_until_mission_ends(OperationTools &operation, void *operation_args);
+ProRetCod operation_wait_until_mission_ends(OperationTools &operation, void *operation_args);
 //******************************************//
 
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
-float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems, CheckEnoughSystems *enough_systems);
+float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems,
+					CheckEnoughSystems *enough_systems);
 
 void drone_handler(shared_ptr<System> system, Operation &operation,
-					std::mutex &mut, float &final_systems,
-					MissionHelper *mission_helper,
-					CheckEnoughSystems *enough_systems,
+					MissionHelper *mission_helper, CheckEnoughSystems *enough_systems,
 					Flag *flag, double separation);
 
 Logger *logger;
@@ -217,7 +261,7 @@ int main(int argc, char *argv[]) {
 	if (argc < 2) {
 		logger->write(error, "Use: " + string(argv[0]) + " <port1> <port2> ...");
 
-		exit(static_cast<int>(ProRetCod::BAD_ARGUMENT));
+		exit(BadArgument::code);
 	}
 
 	HourLoggerDecoration logger_decoration;
@@ -248,11 +292,13 @@ int main(int argc, char *argv[]) {
 
 	logger = new BiLogger{&thread_standard_logger, &stream_loggers};
 
+	/*
 	UserCustomFilter filter{[](const Level &level) {
 		return level > debug;
 	}};
 
 	logger->set_level_filter(&filter);
+	*/
 
 	// Constants
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
@@ -286,10 +332,20 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_min()});
 	*/
 
-	//FixedFlag flag{Flag::Position{47.397953, 8.545455}}; // Encuentra para un rectángulo de 20x90
-	FixedFlag flag{Flag::Position{100, 100}};
+	//FixedFlag flag{Flag::Position{47.397953, 8.545955}}; // Encuentra para un rectángulo de 20x90
+	FixedFlag flag{Flag::Position{47.397868, 8.545665}}; // Encuentra para un rectángulo de 20x90
+	//FixedFlag flag{Flag::Position{100, 100}};
 	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
 	Polygon search_area;
+	global_coordinate = coordinate_transformation.global_from_local({0, 0});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({0, 90});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({20, 90});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({20, 0});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	/*
 	global_coordinate = coordinate_transformation.global_from_local({-10, -10});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({-10, 10});
@@ -298,6 +354,7 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({10, -10});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	*/
 	/*
 	global_coordinate = coordinate_transformation.global_from_local({-40, -40});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
@@ -309,6 +366,8 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	*/
 
+	logger->write(debug, "The flag is in:\n" + static_cast<string>(flag));
+
 	logger->write(debug, "Search area:");
 	for (auto v : search_area.get_vertex()) {
 		logger->write(debug, "    " + static_cast<string>(v));
@@ -318,8 +377,6 @@ int main(int argc, char *argv[]) {
 	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({5, 0})};
 	logger->write(debug, "Separation: " + std::to_string(separation.latitude_deg - base.latitude_deg));
 	SpiralSweep mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
-
-	logger->write(debug, "The flag is in:\n" + static_cast<string>(flag));
 
 	PercentageCheck enough_systems{static_cast<float>(expected_systems), PERCENTAGE_DRONES_REQUIRED};
 
@@ -336,26 +393,29 @@ int main(int argc, char *argv[]) {
 	vector<std::thread> threads_for_waiting{};
 
 	// Defining shared thread variables
-	std::mutex mut;
 	OperationTools operation_tools;
-	Operation operation{operation_tools};
-	std::function<void(OperationTools &)> sync_handler{
-		[](const OperationTools &operation) {
-			if (operation) {
-				logger->write(info, "Synchronization point: " + operation.get_name());
+	std::function<void()> sync_handler{
+		[&operation_tools]() {
+			OkCode ok_code;
+
+			if (operation_tools.get_critical()) {
+				logger->write(error, "Operation \"" + operation_tools.get_name() + "\" fails");
+				exit(operation_tools.get_status_code().get_code());
+			} else if (operation_tools.get_status_code() == ok_code) {
+				logger->write(info, "Synchronization point: " + operation_tools.get_name());
 			} else {
-				logger->write(error, "Operation \"" + operation.get_name() + "\" fails");
-				exit(static_cast<int>(operation.get_status_code()));
+				logger->write(warning, "Synchronization point: " + operation_tools.get_name() +
+					" -- some error has ocurred: " + operation_tools.get_status_code().get_string());
 			}
 		}
 	};
-	std::barrier<std::function<void(OperationTools &)>> sync_point{static_cast<std::ptrdiff_t>(final_systems), sync_handler};
+	std::barrier<std::function<void()>> sync_point{static_cast<std::ptrdiff_t>(final_systems), sync_handler};
 
+	Operation operation{operation_tools, &sync_point};
 
 	for (shared_ptr<System> system : mavsdk.systems()) {
 		threads_for_waiting.push_back(
 			std::thread{drone_handler, system, std::ref(operation),
-							std::ref(mut), std::ref(final_systems),
 							&mission_helper, &enough_systems, &flag,
 							separation.latitude_deg - base.latitude_deg}
 		);
@@ -370,7 +430,7 @@ int main(int argc, char *argv[]) {
 	delete last_execution_logger;
 	delete history_logger;
 
-	return static_cast<int>(ProRetCod::OK);
+	return static_cast<int>(OkCode::code);
 }
 
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
@@ -395,7 +455,7 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 			os << connection_result;
 			logger->write(critical, "Connection failed on " + url + ": " + os.str());
 
-			exit(static_cast<int>(ProRetCod::CONNECTION_FAILED));
+			exit(ConnectionFailed::code);
 		}
 	}
 }
@@ -407,7 +467,7 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 	std::future fut{prom.get_future()};
 	unsigned int times_executed{0};
 
-	mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, expected_systems, &prom, &times_executed]() {
+	mavsdk.subscribe_on_new_system([&mavsdk, &discovered_systems, expected_systems, &prom, &times_executed, &enough_systems]() {
 		discovered_systems = mavsdk.systems().size();
 		vector<System>::size_type remaining_systems {expected_systems - discovered_systems};
 
@@ -422,16 +482,18 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 			prom.set_value();
 		}
 	});
-	
-	if (fut.wait_for(MAX_WAITING_TIME) != std::future_status::ready) {
-		logger->write(warning, "Not all systems found. " + enough_systems->get_status(static_cast<float>(discovered_systems)));
 
-		if (enough_systems->exists_enough_systems(discovered_systems)) {
+	std::future_status future_status{fut.wait_for(MAX_WAITING_TIME)};
+	enough_systems->append_system(static_cast<float>(discovered_systems));
+	if (future_status != std::future_status::ready) {
+		logger->write(warning, "Not all systems found. " + enough_systems->get_status());
+
+		if (enough_systems->exists_enough_systems()) {
 			logger->write(info, "Can continue");
 		} else {
 			logger->write(critical, "Cannot continue");
 
-			exit(static_cast<int>(ProRetCod::NO_SYSTEMS_FOUND));
+			exit(static_cast<int>(NoSystemsFound::code));
 		}
 	}
 	logger->write(info, "Systems search completed");
@@ -439,8 +501,10 @@ float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_syst
 	return static_cast<float>(discovered_systems);
 }
 
-void operation_check_system_health(OperationTools &operation, void *operation_args) {
+ProRetCod operation_check_system_health(OperationTools &operation, void *operation_args) {
 	CheckSystemHealthArgs args{*static_cast<CheckSystemHealthArgs *>(operation_args)};
+	OkCode ok_code;
+	ProRetCod ret{ok_code};
 
 	logger->write(info, "Checking system " + std::to_string(args.system_id));
 
@@ -449,10 +513,11 @@ void operation_check_system_health(OperationTools &operation, void *operation_ar
 	while ((not all_ok) and (attempts > 0)) {
 		--attempts;
 
-		logger->write(warning, "Some failure has occurred in the system " + std::to_string(system_id) + ". Remaining attempts: " + std::to_string(attempts));
+		logger->write(warning, "Some failure has occurred in the system " + std::to_string(args.system_id) +
+						". Remaining attempts: " + std::to_string(attempts));
 		Telemetry::Health health{args.telemetry->health()};
 
-		logger->write(warning, "System " + std::to_string(system_id) + "\n" +
+		logger->write(warning, "System " + std::to_string(args.system_id) + "\n" +
 			"    is accelerometer calibration OK: " + string(health.is_accelerometer_calibration_ok ? "true" : "false") + "\n" +
 			"    is armable: " + string(health.is_armable ? "true" : "false") + "\n" +
 			"    is global position OK: " + string(health.is_global_position_ok ? "true" : "false") + "\n" +
@@ -469,23 +534,21 @@ void operation_check_system_health(OperationTools &operation, void *operation_ar
 
 	if (all_ok) {
 		logger->write(info, "All OK in system " + std::to_string(args.system_id));
-		operation.arrive_and_wait();
 	} else {
-		mut.lock();
-		--final_systems;
-		if (not args.enough_systems->exists_enough_systems(final_systems)) {
-			operation.set_failure(ProRetCod::TELEMETRY_FAILURE);
-		}
-		mut.unlock();
-		logger->write(error, "System " + std::to_string(args.system_id) + " discarded. " + args.enough_systems->get_status(final_systems));
-		operation.arrive_and_drop();
-		//TODO:
-		return;
+		args.enough_systems->subtract_system();
+		TelemetryFailure failure;
+		ret = failure;
+		operation.set_failure(failure, not args.enough_systems->exists_enough_systems());
+		logger->write(error, "System " + std::to_string(args.system_id) + " discarded. " + args.enough_systems->get_status());
 	}
+
+	return ret;
 }
 
-void operation_clear_existing_missions(OperationTools &operation, void *operation_args) {
+ProRetCod operation_clear_existing_missions(OperationTools &operation, void *operation_args) {
 	ClearExistingMissionsArgs args{*static_cast<ClearExistingMissionsArgs *>(operation_args)};
+	OkCode ok_code;
+	ProRetCod ret{ok_code};
 
 	logger->write(info, "System " + std::to_string(args.system_id) + " clearing existing missions");
 
@@ -506,23 +569,21 @@ void operation_clear_existing_missions(OperationTools &operation, void *operatio
 
 	if (mission_result == Mission::Result::Success) {
 		logger->write(info, "System " + std::to_string(args.system_id) + " clean");
-		operation.arrive_and_wait();
 	} else {
-		mut.lock();
-		--final_systems;
-		if (not args.enough_systems->exists_enough_systems(final_systems)) {
-			operation.set_failure(ProRetCod::MISSION_FAILURE);
-		}
-		mut.unlock();
-		logger->write(error, "System " + std::to_string(args.system_id) + " discarded. " + args.enough_systems->get_status(final_systems));
-		operation.arrive_and_drop();
-		// TODO:
-		return;
+		args.enough_systems->subtract_system();
+		MissionFailure failure;
+		ret = failure;
+		operation.set_failure(failure, not args.enough_systems->exists_enough_systems());
+		logger->write(error, "System " + std::to_string(args.system_id) + " discarded. " + args.enough_systems->get_status());
 	}
+
+	return ret;
 }
 
-void operation_return_to_launch(OperationTools &operation, void *operation_args) {
+ProRetCod operation_return_to_launch(OperationTools &operation, void *operation_args) {
 	ReturnToLaunchArgs args{*static_cast<ReturnToLaunchArgs *>(operation_args)};
+	OkCode ok_code;
+	ProRetCod ret{ok_code};
 
 	logger->write(info, "System " + std::to_string(args.system_id) + " set return to launch after mission true");
 
@@ -543,23 +604,21 @@ void operation_return_to_launch(OperationTools &operation, void *operation_args)
 
 	if (mission_result == Mission::Result::Success) {
 		logger->write(info, "System " + std::to_string(args.system_id) + " ready");
-		operation.arrive_and_wait();
 	} else {
-		mut.lock();
-		--final_systems;
-		if (not args.enough_systems->exists_enough_systems(final_systems)) {
-			operation.set_failure(ProRetCod::MISSION_FAILURE);
-		}
-		mut.unlock();
-		logger->write(error, "System " + std::to_string(args.system_id) + " discarded. " + args.enough_systems->get_status(final_systems));
-		operation.arrive_and_drop();
-		//TODO:
-		return;
+		args.enough_systems->subtract_system();
+		MissionFailure failure;
+		ret = failure;
+		operation.set_failure(failure, not args.enough_systems->exists_enough_systems());
+		logger->write(error, "System " + std::to_string(args.system_id) + " discarded. " + args.enough_systems->get_status());
 	}
+
+	return ret;
 }
 
-void operation_return_to_launch_altitude(OperationTools &operation, void *operation_args) {
+ProRetCod operation_return_to_launch_altitude(OperationTools &operation, void *operation_args) {
 	ReturnToLaunchAltitudeArgs args{*static_cast<ReturnToLaunchAltitudeArgs *>(operation_args)};
+	OkCode ok_code;
+	ProRetCod ret{ok_code};
 
 	logger->write(info, "System " + std::to_string(args.system_id) + " set return to launch altitude");
 
@@ -570,7 +629,8 @@ void operation_return_to_launch_altitude(OperationTools &operation, void *operat
 
 		std::ostringstream os;
 		os << action_result;
-		logger->write(warning, "Error in setting the return to launch altitude on system " + std::to_string(system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
+		logger->write(warning, "Error in setting the return to launch altitude on system " + std::to_string(args.system_id) +
+						": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
 
 		std::this_thread::sleep_for(REFRESH_TIME);
 
@@ -579,71 +639,61 @@ void operation_return_to_launch_altitude(OperationTools &operation, void *operat
 
 	if (action_result == Action::Result::Success) {
 		logger->write(info, "System " + std::to_string(args.system_id) + " return to launch altitude ready");
-		operation.arrive_and_wait();
 	} else {
-		mut.lock();
-		--final_systems;
-		if (not args.enough_systems->exists_enough_systems(final_systems)) {
-			operation.set_failure(ProRetCod::ACTION_FAILURE);
-		}
-		mut.unlock();
-		logger->write(error, "System " + std::to_string(args.system_id) + " discarded. " + args.enough_systems->get_status(final_systems));
-		operation.arrive_and_drop();
-		//TODO:
-		return;
+		args.enough_systems->subtract_system();
+		
+		ActionFailure failure;
+		ret = failure;
+		operation.set_failure(failure, not args.enough_systems->exists_enough_systems());
+		logger->write(error, "System " + std::to_string(args.system_id) + " discarded. " + args.enough_systems->get_status());
 	}
+
+	return ret;
 }
 
-void operation_set_mission_controller(OperationTools &operation, void *operation_args) {
+ProRetCod operation_set_mission_controller(OperationTools &operation, void *operation_args) {
 	SetMissionControllerArgs args{*static_cast<SetMissionControllerArgs *>(operation_args)};
+	OkCode ok_code;
+	ProRetCod ret{ok_code};
 
 	logger->write(info, "System " + std::to_string(args.system_id) + " set mission controller");
 
-	SearchController mission_controller{args.telemetry, args.flag,
-	[args](Flag::Position flag_position, bool flag_found_by_me) {
-		if (flag_found_by_me) {
-		logger->write(info, "Flag found by system " + std::to_string(args.system_id) + ": " +
-					  std::to_string(flag_position.latitude_deg) +  ", " + std::to_string(flag_position.longitude_deg));
-		}
-
-		args.action->return_to_launch_async([](mavsdk::Action::Result) {});
-		args.mission->subscribe_mission_progress(nullptr);
-
-	}, 1, args.separation};
-
-	MissionControllerStatus mission_controller_status{mission_controller.mission_control()};
+	MissionControllerStatus mission_controller_status{args.mission_controller->mission_control()};
 
 	if (mission_controller_status == MissionControllerStatus::SUCCESS) {
 		logger->write(info, "System " + std::to_string(args.system_id) + " mission controller ready");
-		operation.arrive_and_wait();
 	} else {
-		mut.lock();
-		--final_systems;
-		if (not args.enough_systems->exists_enough_systems(final_systems)) {
-			operation.set_failure(ProRetCod::MISSION_FAILURE);
-		}
-		mut.unlock();
-		logger->write(error, "System " + std::to_string(args.system_id) + " discarded. " + args.enough_systems->get_status(final_systems));
-		operation.arrive_and_drop();
-		//TODO:
-		return;
+		args.enough_systems->subtract_system();
+		MissionFailure failure;
+		ret = failure;
+		operation.set_failure(failure, not args.enough_systems->exists_enough_systems());
+		logger->write(error, "System " + std::to_string(args.system_id) + " discarded. " + args.enough_systems->get_status());
 	}
+
+	return ret;
 }
 
-void operation_make_mission_plan(OperationTools &operation, void *operation_args) {
+ProRetCod operation_make_mission_plan(OperationTools &operation, void *operation_args) {
 	MakeMissionPlanArgs args{*static_cast<MakeMissionPlanArgs *>(operation_args)};
+	OkCode ok_code;
+	ProRetCod ret{ok_code};
+
+	logger->write(info, "System " + std::to_string(args.system_id) + " making mission plan");
 
 	vector<Mission::MissionItem> mission_item_vector;
 
 	try {
-		args.mission_helper->new_mission(args.system_id, final_systems, mission_item_vector);
+		args.mission_helper->new_mission(args.system_id, args.enough_systems->get_number_of_systems(), mission_item_vector);
 	} catch (const CannotMakeMission &e) {
 		if (std::string(e.what()) == "CannotMakeMission: The system ID must be less than or equal to the number of systems") {
-			args.mission_helper->new_mission(final_systems, final_systems, mission_item_vector);
+			//TODO:
+			args.mission_helper->new_mission(args.enough_systems->get_number_of_systems(), args.enough_systems->get_number_of_systems(), mission_item_vector);
 		} else {
 			logger->write(critical, "System " + std::to_string(args.system_id) + " cannot make a mission: " + e.what());
 
-			operation.set_failure(ProRetCod::ACTION_FAILURE);
+			ActionFailure failure;
+			ret = failure;
+			operation.set_failure(failure, true);
 		}
 	}
 
@@ -655,19 +705,19 @@ void operation_make_mission_plan(OperationTools &operation, void *operation_args
 
 	args.mission_plan->mission_items = mission_item_vector;
 
-	operation.arrive_and_wait();
+	return ret;
 }
 
-void operation_set_mission_plan(OperationTools &operation, void *operation_args) {
+ProRetCod operation_set_mission_plan(OperationTools &operation, void *operation_args) {
 	SetMissionPlanArgs args{*static_cast<SetMissionPlanArgs *>(operation_args)};
+	OkCode ok_code;
+	ProRetCod ret{ok_code};
 
-	mutex mut;
-
-	mut.lock();
+	SetMissionPlanArgs::mut.lock();
 	std::this_thread::sleep_for(REFRESH_TIME); // Guarantees success
 	logger->write(info, "Uploading mission plan to system " + std::to_string(args.system_id));
 	Mission::Result mission_result{args.mission->upload_mission(*(args.mission_plan))};
-	mut.unlock();
+	SetMissionPlanArgs::mut.unlock();
 
 	unsigned int attempts{MAX_ATTEMPTS};
 	while ((mission_result != Mission::Result::Success) and (attempts > 0)) {
@@ -678,10 +728,10 @@ void operation_set_mission_plan(OperationTools &operation, void *operation_args)
 		logger->write(warning, "Error uploading mission plan to system " +
 				std::to_string(args.system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
 
-		mut.lock();
+		SetMissionPlanArgs::mut.lock();
 		std::this_thread::sleep_for(REFRESH_TIME);
 		mission_result = args.mission->upload_mission(*(args.mission_plan));
-		mut.unlock();
+		SetMissionPlanArgs::mut.unlock();
 	}
 
 	if (mission_result == Mission::Result::Success) {
@@ -691,14 +741,18 @@ void operation_set_mission_plan(OperationTools &operation, void *operation_args)
 		os << mission_result;
 		logger->write(critical, "Error uploading mission plan to system " + std::to_string(args.system_id) + ": " + os.str());
 
-		operation.set_failure(ProRetCod::MISSION_FAILURE);
+		MissionFailure failure;
+		ret = failure;
+		operation.set_failure(failure, true);
 	}
 
-	operation.arrive_and_wait();
+	return ret;
 }
 
-void operation_arm_systems(OperationTools &operation, void *operation_args) {
+ProRetCod operation_arm_systems(OperationTools &operation, void *operation_args) {
 	ArmSystemsArgs args{*static_cast<ArmSystemsArgs *>(operation_args)};
+	OkCode ok_code;
+	ProRetCod ret{ok_code};
 
 	logger->write(info, "Arming system " + std::to_string(args.system_id));
 
@@ -721,14 +775,18 @@ void operation_arm_systems(OperationTools &operation, void *operation_args) {
 	} else {
 		logger->write(critical, "System " + std::to_string(args.system_id) + " cannot be armed");
 
-		operation.set_failure(ProRetCod::ACTION_FAILURE);
+		ActionFailure failure;
+		ret = failure;
+		operation.set_failure(failure, true);
 	}
 
-	operation.arrive_and_wait();
+	return ret;
 }
 
-void operation_start_mission(OperationTools &operation, void *operation_args) {
+ProRetCod operation_start_mission(OperationTools &operation, void *operation_args) {
 	StartMissionArgs args{*static_cast<StartMissionArgs *>(operation_args)};
+	OkCode ok_code;
+	ProRetCod ret{ok_code};
 
 	logger->write(info, "Starting mission on system " + std::to_string(args.system_id));
 
@@ -756,14 +814,20 @@ void operation_start_mission(OperationTools &operation, void *operation_args) {
 		os << mission_result;
 		logger->write(critical, "Error starting mission on system " + std::to_string(args.system_id) + ": " + os.str());
 
-  		operation.set_failure(ProRetCod::MISSION_FAILURE);
+		MissionFailure failure;
+		ret = failure;
+  		operation.set_failure(failure, true);
 	}
 
-	operation.arrive_and_wait();
+	return ret;
 }
 
-void operation_wait_until_mission_ends(OperationTools &operation, void *operation_args) {
+ProRetCod operation_wait_until_mission_ends(OperationTools &, void *operation_args) {
 	WaitUntilMissionEndsArgs args{*static_cast<WaitUntilMissionEndsArgs *>(operation_args)};
+	OkCode ok_code;
+	ProRetCod ret{ok_code};
+
+	logger->write(info, "System " + std::to_string(args.system_id) + " wating until mission ends");
 
 	args.mission->subscribe_mission_progress([&args](Mission::MissionProgress mis_prog) {
 		logger->write(info, "System " + std::to_string(args.system_id) + " mission status: " +
@@ -799,11 +863,10 @@ void operation_wait_until_mission_ends(OperationTools &operation, void *operatio
 
 	fut_on_ground.get();
 
-	operation.arrive_and_wait();
+	return ret;
 }
 
 void drone_handler(shared_ptr<System> system, Operation &operation,
-					std::mutex &mut, float &final_systems,
 					MissionHelper *mission_helper,
 					CheckEnoughSystems *enough_systems, Flag *flag,
 					double separation) {
@@ -812,55 +875,98 @@ void drone_handler(shared_ptr<System> system, Operation &operation,
 	Telemetry telemetry{system};
 	Mission mission{system};
 
+	SearchController mission_controller{&telemetry, flag,
+		[system_id, &action, &mission](Flag::Position flag_position, bool flag_found_by_me) {
+			if (flag_found_by_me) {
+			logger->write(info, "Flag found by system " + std::to_string(system_id) + ": " +
+						std::to_string(flag_position.latitude_deg) +  ", " + std::to_string(flag_position.longitude_deg));
+			}
+
+			action.return_to_launch_async([](mavsdk::Action::Result) {});
+			mission.subscribe_mission_progress(nullptr);
+		}, 1, separation
+	};
+	OkCode ok_code;
+
 	// Check the health of all systems
 	CheckSystemHealthArgs check_system_health_args{system_id, &telemetry, enough_systems};
 
-	operation.new_operation("check system health", operation_check_system_health, static_cast<void*>(&check_system_health_args));
+	if (operation.new_operation("check system health", operation_check_system_health, static_cast<void*>(&check_system_health_args)) != ok_code) {
+		logger->write(debug, "Ending thread " + std::to_string(system_id));
+		return;
+	}
 
 	// Clear existing missions
 	ClearExistingMissionsArgs clear_existing_missions_args{system_id, &mission, enough_systems};
 
-	operation.new_operation("clear existing missions", operation_clear_existing_missions, static_cast<void*>(&clear_existing_missions_args));
+	if (operation.new_operation("clear existing missions", operation_clear_existing_missions, static_cast<void*>(&clear_existing_missions_args)) != ok_code) {
+		logger->write(debug, "Ending thread " + std::to_string(system_id));
+		return;
+	}
 
 	// Set return to launch after mission true
 	ReturnToLaunchArgs return_to_launch_args{system_id, &mission, enough_systems};
 
-	operation.new_operation("set return to launch after mission true", operation_return_to_launch, static_cast<void*>(&return_to_launch_args));
+	if (operation.new_operation("set return to launch after mission true", operation_return_to_launch, static_cast<void*>(&return_to_launch_args)) != ok_code) {
+		logger->write(debug, "Ending thread " + std::to_string(system_id));
+		return;
+	}
 
 	// Set return to launch altitude
 	ReturnToLaunchAltitudeArgs return_to_launch_altitude_args{system_id, &action, enough_systems};
 
-	operation.new_operation("set return to launch altitude", operation_return_to_launch_altitude, static_cast<void*>(&return_to_launch_altitude_args));
+	if (operation.new_operation("set return to launch altitude", operation_return_to_launch_altitude, static_cast<void*>(&return_to_launch_altitude_args)) != ok_code) {
+		logger->write(debug, "Ending thread " + std::to_string(system_id));
+		return;
+	}
 
 	// Set mission controller
 	SetMissionControllerArgs set_mission_controller_args{system_id, &telemetry, &action, &mission,
-															flag, enough_systems, separation};
+															flag, &mission_controller, enough_systems, separation};
 	
-	operation.new_operation("set mission controller", operation_set_mission_controller, static_cast<void*>(&set_mission_controller_args));
+	if (operation.new_operation("set mission controller", operation_set_mission_controller, static_cast<void*>(&set_mission_controller_args)) != ok_code) {
+		logger->write(debug, "Ending thread " + std::to_string(system_id));
+		return;
+	}
 
 	// Make mission plan
 	Mission::MissionPlan mission_plan;
-	MakeMissionPlanArgs make_mission_plan_args{system_id, mission_helper, &mission_plan};
+	MakeMissionPlanArgs make_mission_plan_args{system_id, mission_helper, &mission_plan, enough_systems};
 
-	operation.new_operation("make mission plan", operation_make_mission_plan, static_cast<void*>(&make_mission_plan_args));
+	if (operation.new_operation("make mission plan", operation_make_mission_plan, static_cast<void*>(&make_mission_plan_args)) != ok_code) {
+		logger->write(debug, "Ending thread " + std::to_string(system_id));
+		return;
+	}
 
 	// Set mission plan
 	SetMissionPlanArgs set_mission_plan_args{system_id, &mission, &mission_plan};
 
-	operation.new_operation("set mission plan", operation_set_mission_plan, static_cast<void*>(&set_mission_plan_args));
+	if (operation.new_operation("set mission plan", operation_set_mission_plan, static_cast<void*>(&set_mission_plan_args)) != ok_code) {
+		logger->write(debug, "Ending thread " + std::to_string(system_id));
+		return;
+	}
 
 	// Arming systems
 	ArmSystemsArgs arm_systems_args{system_id, &action};
 
-	operation.new_operation("arm systems", operation_arm_systems, static_cast<void*>(&arm_systems_args));
+	if (operation.new_operation("arm systems", operation_arm_systems, static_cast<void*>(&arm_systems_args)) != ok_code) {
+		logger->write(debug, "Ending thread " + std::to_string(system_id));
+		return;
+	}
 	
 	// Start mission
 	StartMissionArgs start_mission_args{system_id, &mission};
 
-	operation.new_operation("start mission", operation_start_mission, static_cast<void*>(&start_mission_args));
+	if (operation.new_operation("start mission", operation_start_mission, static_cast<void*>(&start_mission_args)) != ok_code) {
+		logger->write(debug, "Ending thread " + std::to_string(system_id));
+		return;
+	}
 
 	// Wait until the mission ends
-	WaitUntilMissionEndsArgs wait_until_mission_ends_args{};
+	WaitUntilMissionEndsArgs wait_until_mission_ends_args{system_id, &telemetry, &mission};
 
-	operation.new_operation("wait until the mission ends", operation_wait_until_mission_ends, static_cast<void*>(&wait_until_mission_ends_args));
+	if (operation.new_operation("wait until the mission ends", operation_wait_until_mission_ends, static_cast<void*>(&wait_until_mission_ends_args)) != ok_code) {
+		logger->write(debug, "Ending thread " + std::to_string(system_id));
+		return;
+	}
 }
