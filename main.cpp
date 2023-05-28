@@ -284,8 +284,6 @@ int main(int argc, char *argv[]) {
 							std::ref(sync_point), std::ref(final_systems), &mission_helper,
 							&enough_systems, &flag, separation.latitude_deg - base.latitude_deg}
 		);
-
-		std::this_thread::sleep_for(REFRESH_TIME);
 	}
 
 	for (std::thread &th : threads_for_waiting) {
