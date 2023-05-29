@@ -42,7 +42,7 @@ ProRetCod OperationTools::get_status_code() const {
     return cod;
 }
 
-bool OperationTools::get_critical() const {
+bool OperationTools::is_critical() const {
     bool cr;
 
     mut.lock();

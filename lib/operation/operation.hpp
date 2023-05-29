@@ -30,7 +30,7 @@ class ProRetCod {
 			return code != other.code;
 		}
 
-		uint get_code() const {
+		int get_code() const {
 			return code;
 		}
 		string get_string() const {
@@ -111,7 +111,7 @@ class OperationTools {
 	public:
 		OperationTools();
 		ProRetCod get_status_code() const;
-		bool get_critical() const;
+		bool is_critical() const;
 		string get_name() const;
 		void set_failure(const ProRetCod error_code, bool critical=false);
 		void set_name(const string operation_name);

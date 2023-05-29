@@ -396,7 +396,7 @@ int main(int argc, char *argv[]) {
 		[&operation_tools]() {
 			OkCode ok_code;
 
-			if (operation_tools.get_critical()) {
+			if (operation_tools.is_critical()) {
 				logger->write(critical, "Operation \"" + operation_tools.get_name() + "\" fails");
 				exit(operation_tools.get_status_code().get_code());
 			} else if (operation_tools.get_status_code() == ok_code) {
