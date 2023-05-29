@@ -85,22 +85,3 @@ Operation::Operation(OperationTools &operation_tools, barrier<function<void()>> 
     this->operation_tools = &operation_tools;
     this->sync_point = sync_point;
 }
-
-ProRetCod Operation::new_operation(string operation_name,
-                                function<ProRetCod(OperationTools &, void *)> operation_action,
-                                void *operation_args) {
-
-    operation_tools->set_name(operation_name);
-
-    ProRetCod ret{operation_action(*operation_tools, operation_args)};
-
-    OkCode ok_code;
-
-    if (ret == ok_code) {
-        sync_point->arrive_and_wait();
-    } else {
-        sync_point->arrive_and_drop();
-    }
-
-    return ret;
-}

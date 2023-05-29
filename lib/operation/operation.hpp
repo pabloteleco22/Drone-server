@@ -123,7 +123,24 @@ class Operation {
 
     public:
         Operation(OperationTools &operation_tools, barrier<function<void()>> *sync_point);
+
+		template<typename T>
 		ProRetCod new_operation(string operation_name,
-							function<ProRetCod(OperationTools &, void *)> operation_action,
-							void *operation_args);
+							function<ProRetCod(OperationTools &, T *)> operation_action,
+							T *operation_args) {
+
+		operation_tools->set_name(operation_name);
+
+		ProRetCod ret{operation_action(*operation_tools, operation_args)};
+
+		OkCode ok_code;
+
+		if (ret == ok_code) {
+			sync_point->arrive_and_wait();
+		} else {
+			sync_point->arrive_and_drop();
+		}
+
+		return ret;
+	}
 };
