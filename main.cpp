@@ -292,13 +292,11 @@ int main(int argc, char *argv[]) {
 
 	logger = new BiLogger{&thread_standard_logger, &stream_loggers};
 
-	/*
 	UserCustomFilter filter{[](const Level &level) {
 		return level > debug;
 	}};
 
 	logger->set_level_filter(&filter);
-	*/
 
 	// Constants
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
@@ -332,8 +330,8 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_min()});
 	*/
 
-	//FixedFlag flag{Flag::Position{47.397953, 8.545955}}; // Encuentra para un rectángulo de 20x90
-	FixedFlag flag{Flag::Position{47.397868, 8.545665}}; // Encuentra para un rectángulo de 20x90
+	FixedFlag flag{Flag::Position{47.397953, 8.545955}}; // Encuentra para un rectángulo de 20x90
+	//FixedFlag flag{Flag::Position{47.397868, 8.545665}}; // Encuentra para un rectángulo de 20x90
 	//FixedFlag flag{Flag::Position{100, 100}};
 	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
 	Polygon search_area;
@@ -399,12 +397,12 @@ int main(int argc, char *argv[]) {
 			OkCode ok_code;
 
 			if (operation_tools.get_critical()) {
-				logger->write(error, "Operation \"" + operation_tools.get_name() + "\" fails");
+				logger->write(critical, "Operation \"" + operation_tools.get_name() + "\" fails");
 				exit(operation_tools.get_status_code().get_code());
 			} else if (operation_tools.get_status_code() == ok_code) {
 				logger->write(info, "Synchronization point: " + operation_tools.get_name());
 			} else {
-				logger->write(warning, "Synchronization point: " + operation_tools.get_name() +
+				logger->write(error, "Synchronization point: " + operation_tools.get_name() +
 					" -- some error has ocurred: " + operation_tools.get_status_code().get_string());
 			}
 		}
@@ -686,8 +684,8 @@ ProRetCod operation_make_mission_plan(OperationTools &operation, void *operation
 		args.mission_helper->new_mission(args.system_id, args.enough_systems->get_number_of_systems(), mission_item_vector);
 	} catch (const CannotMakeMission &e) {
 		if (std::string(e.what()) == "CannotMakeMission: The system ID must be less than or equal to the number of systems") {
-			//TODO:
-			args.mission_helper->new_mission(args.enough_systems->get_number_of_systems(), args.enough_systems->get_number_of_systems(), mission_item_vector);
+			args.mission_helper->new_mission(args.system_id % static_cast<unsigned int>(args.enough_systems->get_number_of_systems()),
+												args.enough_systems->get_number_of_systems(), mission_item_vector);
 		} else {
 			logger->write(critical, "System " + std::to_string(args.system_id) + " cannot make a mission: " + e.what());
 

@@ -96,7 +96,7 @@ ProRetCod Operation::new_operation(string operation_name,
 
     OkCode ok_code;
 
-    if (operation_tools->get_status_code() == ok_code) {
+    if (ret == ok_code) {
         sync_point->arrive_and_wait();
     } else {
         sync_point->arrive_and_drop();
