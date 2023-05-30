@@ -30,11 +30,11 @@ Mission::MissionItem MissionHelper::make_mission_item(
     return new_item;
 }
 
-PolygonMission::PolygonMission(Polygon area) {
+PolySplitMission::PolySplitMission(Polygon area) {
     this->area = area;
 }
 
-void PolygonMission::get_polygon_of_interest(const unsigned int system_id, const unsigned int number_of_systems, Polygon *polygon_of_interest) const {
+void PolySplitMission::get_polygon_of_interest(const unsigned int system_id, const unsigned int number_of_systems, Polygon *polygon_of_interest) const {
     const double precision{1E6};
     Polygon helper = area;
     for (size_t i = 0; i < helper.size(); ++i) {

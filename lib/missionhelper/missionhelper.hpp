@@ -25,8 +25,8 @@ struct MissionHelper {
             Mission::MissionItem::CameraAction camera_action);
 };
 
-struct PolygonMission : public MissionHelper {
-    PolygonMission(Polygon area);
+struct PolySplitMission : public MissionHelper {
+    PolySplitMission(Polygon area);
 
     protected:
         Polygon area;
@@ -34,13 +34,13 @@ struct PolygonMission : public MissionHelper {
         virtual void get_polygon_of_interest(const unsigned int system_id, const unsigned int number_of_systems, Polygon *polygon_of_interest) const;
 };
 
-struct GoCenter : public PolygonMission {
-    using PolygonMission::PolygonMission;
+struct GoCenter : public PolySplitMission {
+    using PolySplitMission::PolySplitMission;
     virtual void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, const unsigned int system_id=256) const;
 };
 
-struct SpiralSweep : public PolygonMission {
-    SpiralSweep(Polygon area, const double separation) : PolygonMission(area) {
+struct SpiralSweep : public PolySplitMission {
+    SpiralSweep(Polygon area, const double separation) : PolySplitMission(area) {
         this->separation = separation;
     };
     virtual void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id=256) const;
