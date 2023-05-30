@@ -677,12 +677,11 @@ ProRetCod operation_make_mission_plan(OperationTools &operation, MakeMissionPlan
 	try {
 		args->mission_helper->new_mission(args->enough_systems->get_number_of_systems(), mission_item_vector);
 	} catch (const CannotMakeMission &e) {
-			logger->write(critical, "System " + std::to_string(args->system_id) + " cannot make a mission: " + e.what());
+		logger->write(critical, "System " + std::to_string(args->system_id) + " cannot make a mission: " + e.what());
 
-			ActionFailure failure;
-			ret = failure;
-			operation.set_failure(failure, true);
-		}
+		ActionFailure failure;
+		ret = failure;
+		operation.set_failure(failure, true);
 	}
 
 	for (auto p : mission_item_vector) {
