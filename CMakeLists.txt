@@ -16,6 +16,7 @@ add_subdirectory(lib/flag)
 add_subdirectory(lib/log)
 add_subdirectory(lib/missionhelper)
 add_subdirectory(lib/missioncontrol)
+add_subdirectory(lib/errorcontrol)
 add_subdirectory(lib/operation)
 add_subdirectory(lib/poly)
 
@@ -37,6 +38,7 @@ target_link_libraries(drone_server
     MissionHelper
     MissionControl
     Operation
+    ErrorControl
 )
 
 #------------------- TEST -------------------#

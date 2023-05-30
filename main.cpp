@@ -9,6 +9,7 @@
 #include "lib/missionhelper/missionhelper.hpp"
 #include "lib/missioncontrol/missioncontrol.hpp"
 #include "lib/operation/operation.hpp"
+#include "lib/errorcontrol/error_control.hpp"
 #include <thread>
 #include <barrier>
 #include <chrono>
@@ -31,65 +32,6 @@ const float REASONABLE_ERROR{0.3f};
 const float PERCENTAGE_DRONES_REQUIRED{66.0f};
 const unsigned int MAX_ATTEMPTS{10};
 const float BASE_RETURN_TO_LAUNCH_ALTITUDE{10.0f};
-
-class CheckEnoughSystems {
-	protected:
-	 	mutable mutex mut;
-		const float expected_systems;
-		float number_of_systems{0};
-
-	public:
-		CheckEnoughSystems(float expected_systems) : expected_systems{expected_systems} {}
-		virtual ~CheckEnoughSystems() {}
-		virtual bool exists_enough_systems() const = 0;
-		virtual string get_status() const = 0;
-		virtual void append_system(float num=1) {
-			mut.lock();
-			number_of_systems += num;
-			mut.unlock();
-		}
-		virtual void subtract_system(float num=1) {
-			mut.lock();
-			number_of_systems -= num;
-			mut.unlock();
-		}
-		virtual float get_number_of_systems() const {
-			mut.lock();
-			float n{number_of_systems};
-			mut.unlock();
-
-			return n;
-		}
-};
-
-struct PercentageCheck final : public CheckEnoughSystems {
-	PercentageCheck(const float expected_systems, const float percentage_drones_required=100.0f) :
-			CheckEnoughSystems(expected_systems) {
-		this->percentage_required = percentage_drones_required;
-		required_systems = expected_systems * percentage_drones_required / 100.0f;
-	}
-
-	bool exists_enough_systems() const override {
-		mut.lock();
-		bool exist{number_of_systems >= required_systems};
-		mut.unlock();
-
-		return exist;
-	}
-
-	string get_status() const override {
-		mut.lock();
-		string status{"Required percentage " + std::to_string(percentage_required) + "%. Systems in use " +
-															std::to_string(100.0f * number_of_systems / expected_systems) + "%"};
-		mut.unlock();
-
-		return status;
-	}
-
-	private:
-		float percentage_required;
-		float required_systems;
-};
 
 //********** Operations **********//
 struct CheckSystemHealthArgs {

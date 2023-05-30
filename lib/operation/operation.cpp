@@ -1,40 +1,11 @@
 #include "operation.hpp"
 
-/** ProRetCod **/
-const int OkCode::code{0};
-const string OkCode::message{"OK"};
-
-const int BadArgument::code{1};
-const string BadArgument::message{"bad argument"};
-
-const int ConnectionFailed::code{2};
-const string ConnectionFailed::message{"connection failed"};
-
-const int NoSystemsFound::code{3};
-const string NoSystemsFound::message{"no systems found"};
-
-const int TelemetryFailure::code{4};
-const string TelemetryFailure::message{"telemetry failure"};
-
-const int ActionFailure::code{5};
-const string ActionFailure::message{"action failure"};
-
-const int OffboardFailure::code{6};
-const string OffboardFailure::message{"offboard failure"};
-
-const int MissionFailure::code{7};
-const string MissionFailure::message{"mission failure"};
-
-const int UnknownFailure::code{255};
-const string UnknownFailure::message{"unknown failure"};
-
 /** Operation Status **/
 OperationTools::OperationTools() {
     this->operation_name = "";
 }
 
 ProRetCod OperationTools::get_status_code() const {
-
     mut.lock();
     ProRetCod cod{operation_code};
     mut.unlock();
