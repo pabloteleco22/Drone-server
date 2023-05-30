@@ -675,11 +675,10 @@ ProRetCod operation_make_mission_plan(OperationTools &operation, MakeMissionPlan
 	vector<Mission::MissionItem> mission_item_vector;
 
 	try {
-		args->mission_helper->new_mission(args->system_id, args->enough_systems->get_number_of_systems(), mission_item_vector);
+		args->mission_helper->new_mission(args->enough_systems->get_number_of_systems(), mission_item_vector);
 	} catch (const CannotMakeMission &e) {
 		if (std::string(e.what()) == "CannotMakeMission: The system ID must be less than or equal to the number of systems") {
-			args->mission_helper->new_mission(args->system_id % static_cast<unsigned int>(args->enough_systems->get_number_of_systems()),
-												args->enough_systems->get_number_of_systems(), mission_item_vector);
+			args->mission_helper->new_mission(args->enough_systems->get_number_of_systems(), mission_item_vector);
 		} else {
 			logger->write(critical, "System " + std::to_string(args->system_id) + " cannot make a mission: " + e.what());
 

@@ -8,10 +8,6 @@ const char *CannotMakeMission::what() const noexcept {
     return message.c_str();
 }
 
-MissionHelper::MissionHelper(Polygon area) {
-    this->area = area;
-}
-
 Mission::MissionItem MissionHelper::make_mission_item(
     double latitude_deg,
     double longitude_deg,
@@ -34,7 +30,11 @@ Mission::MissionItem MissionHelper::make_mission_item(
     return new_item;
 }
 
-void MissionHelper::get_polygon_of_interest(const unsigned int system_id, const unsigned int number_of_systems, Polygon *polygon_of_interest) const {
+PolygonMission::PolygonMission(Polygon area) {
+    this->area = area;
+}
+
+void PolygonMission::get_polygon_of_interest(const unsigned int system_id, const unsigned int number_of_systems, Polygon *polygon_of_interest) const {
     const double precision{1E6};
     Polygon helper = area;
     for (size_t i = 0; i < helper.size(); ++i) {
@@ -97,7 +97,7 @@ void MissionHelper::get_polygon_of_interest(const unsigned int system_id, const 
     *polygon_of_interest = *polygon_of_interest_tmp;
 }
 
-void GoCenter::new_mission(const unsigned int system_id, const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission) const {
+void GoCenter::new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id) const {
     Polygon polygon_of_interest;
 
     get_polygon_of_interest(system_id, number_of_systems, &polygon_of_interest);
@@ -118,8 +118,19 @@ void GoCenter::new_mission(const unsigned int system_id, const unsigned int numb
     );
 }
 
-void SpiralSweep::new_mission(const unsigned int system_id, const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission) const {
+unsigned int SpiralSweep::auto_system_id{1};
+std::mutex SpiralSweep::mut{};
+
+void SpiralSweep::new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id) const {
     Polygon polygon_of_interest;
+
+    if (system_id > 255) {
+        mut.lock();
+        system_id = auto_system_id;
+        ++auto_system_id;
+        if (auto_system_id > number_of_systems) auto_system_id = 1;
+        mut.unlock();
+    }
 
     get_polygon_of_interest(system_id, number_of_systems, &polygon_of_interest);
 

@@ -6,7 +6,7 @@ TEST(GoCenterTest, NewMissionThrowException) {
     MissionHelper *mission_helper{new GoCenter{poly}};
     std::vector<Mission::MissionItem> mission_item_list;
 
-    ASSERT_THROW(mission_helper->new_mission(2, 3, mission_item_list), CannotMakeMission);
+    ASSERT_THROW(mission_helper->new_mission(3, mission_item_list, 2), CannotMakeMission);
 
     delete mission_helper;
 }
@@ -21,10 +21,10 @@ TEST(GoCenterTest, NewMission) {
     MissionHelper *mission_helper{new GoCenter{poly}};
     std::vector<Mission::MissionItem> mission_item_list;
 
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(2, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(3, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(4, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 2));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 3));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 4));
 
     delete mission_helper;
 }
@@ -39,11 +39,11 @@ TEST(GoCenterTest, NewMission2) {
     MissionHelper *mission_helper{new GoCenter{poly}};
     std::vector<Mission::MissionItem> mission_item_list;
 
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 1, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(2, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(3, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(4, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(1, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 2));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 3));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 4));
 
     delete mission_helper;
 }
@@ -58,12 +58,12 @@ TEST(GoCenterTest, NewMission3) {
     MissionHelper *mission_helper{new GoCenter{poly}};
     std::vector<Mission::MissionItem> mission_item_list;
 
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 1, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(2, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(3, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(4, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(1, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 2));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 3));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 4));
 
     delete mission_helper;
 }
@@ -78,12 +78,12 @@ TEST(GoCenterTest, NewMission4) {
     MissionHelper *mission_helper{new GoCenter{poly}};
     std::vector<Mission::MissionItem> mission_item_list;
 
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 1, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(2, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(3, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(4, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(1, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 2));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 3));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 4));
 
     delete mission_helper;
 }
@@ -98,12 +98,12 @@ TEST(SpiralSweepTest, NewMission4) {
     MissionHelper *mission_helper{new SpiralSweep{poly, 0.000018}};
     std::vector<Mission::MissionItem> mission_item_list;
 
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 1, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(1, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(2, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(3, 4, mission_item_list));
-    ASSERT_NO_THROW(mission_helper->new_mission(4, 4, mission_item_list));
+    ASSERT_NO_THROW(mission_helper->new_mission(1, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 2));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 3));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 4));
 
     delete mission_helper;
 }
