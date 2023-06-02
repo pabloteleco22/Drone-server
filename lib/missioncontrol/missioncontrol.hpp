@@ -6,13 +6,30 @@
 #include <mavsdk/plugins/action/action.h>
 
 #include "../flag/flag.hpp"
+#include "../errorcontrol/error_control.hpp"
 #include <memory>
 #include <functional>
 #include <mutex>
+#include <string>
 
-enum class MissionControllerStatus : int{
-    SUCCESS = 0,
-    FAILURE = 1
+using std::string;
+
+class MissionControllerStatus : public ProRetCod {
+    using ProRetCod::ProRetCod;
+};
+
+struct MCSSuccess : public MissionControllerStatus {
+    MCSSuccess() : MissionControllerStatus(code, message) {}
+
+    static const int code;
+    static const string message;
+};
+
+struct MCSSuscribePositionFailure : public MissionControllerStatus {
+    MCSSuscribePositionFailure () : MissionControllerStatus(code, message) {}
+
+    static const int code;
+    static const string message;
 };
 
 struct MissionController {

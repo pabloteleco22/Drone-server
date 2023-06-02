@@ -44,11 +44,10 @@ class Operation {
 
 		OkCode ok_code;
 
-		if (ret == ok_code) {
+		if (ret == ok_code)
 			sync_point->arrive_and_wait();
-		} else {
+		else
 			sync_point->arrive_and_drop();
-		}
 
 		return ret;
 	}

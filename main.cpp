@@ -594,14 +594,16 @@ ProRetCod operation_set_mission_controller(OperationTools &operation, SetMission
 	logger->write(info, "System " + std::to_string(args->system_id) + " set mission controller");
 
 	MissionControllerStatus mission_controller_status{args->mission_controller->mission_control()};
+	MCSSuccess mcs_success;
 
-	if (mission_controller_status == MissionControllerStatus::SUCCESS) {
+	if (mission_controller_status == mcs_success) {
 		logger->write(info, "System " + std::to_string(args->system_id) + " mission controller ready");
 	} else {
 		args->enough_systems->subtract_system();
 		MissionFailure failure;
 		ret = failure;
 		operation.set_failure(failure, not args->enough_systems->exists_enough_systems());
+		logger->write(error, "Error setting the mission controller in system " + std::to_string(args->system_id) + ": " + mission_controller_status.get_string());
 		logger->write(error, "System " + std::to_string(args->system_id) + " discarded. " + args->enough_systems->get_status());
 	}
 

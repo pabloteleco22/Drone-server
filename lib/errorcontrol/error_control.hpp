@@ -22,10 +22,10 @@ class ProRetCod {
 			return *this;
 		}
 		bool operator==(const ProRetCod &other) {
-			return code == other.code;
+			return ((code == other.code) and (message == other.message));
 		}
 		bool operator!=(const ProRetCod &other) {
-			return code != other.code;
+			return ((code != other.code) or (message != other.message));
 		}
 
 		int get_code() const {

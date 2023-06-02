@@ -2,6 +2,13 @@
 
 #include <cmath>
 
+/** MissionControllerStatus **/
+const int MCSSuccess::code{0};
+const string MCSSuccess::message{"success"};
+const int MCSSuscribePositionFailure::code{1};
+const string MCSSuscribePositionFailure::message{"unable to suscribe position"};
+
+/** Search Controller **/
 bool SearchController::flag_found{false};
 std::mutex SearchController::mut{};
 
@@ -47,8 +54,11 @@ MissionControllerStatus SearchController::mission_control() {
     }
     );
 
-    if (result == mavsdk::Telemetry::Result::Success)
-        return MissionControllerStatus::SUCCESS;
-    else
-        return MissionControllerStatus::FAILURE;
+    if (result == mavsdk::Telemetry::Result::Success) {
+        MCSSuccess success;
+        return success;
+    } else {
+        MCSSuscribePositionFailure failure;
+        return failure;
+    }
 }
