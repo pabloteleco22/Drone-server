@@ -698,6 +698,25 @@ TEST(PolygonTest, SplitTrue) {
     ASSERT_EQ(cut_line, expected_cut_line);
 }
 
+TEST(PolygonTest, SplitTrue2) {
+    Points original_points;
+    original_points.push_back(Point{});
+    original_points.push_back(Point{0.2, 0});
+    original_points.push_back(Point{0.2, 2});
+    original_points.push_back(Point{0, 2});
+    const Polygon original_poly{original_points};
+    Polygon first_poly;
+    Polygon second_poly;
+    Segment cut_line;
+    const double expected_area{0.3};
+    const Segment expected_cut_line{Point{0, 1.5}, Point{0.2, 1.5}};
+
+    ASSERT_NO_THROW(original_poly.split(expected_area, first_poly, second_poly, cut_line));
+    ASSERT_EQ(second_poly.count_square(), expected_area);
+    ASSERT_EQ(first_poly.count_square() + second_poly.count_square(), original_poly.count_square());
+    ASSERT_EQ(cut_line, expected_cut_line);
+}
+
 TEST(PolygonTest, SplitFalse) {
     Points original_points;
     original_points.push_back(Point{});

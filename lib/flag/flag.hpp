@@ -52,7 +52,6 @@ class RandomFlag : public Flag {
 
 class FixedFlag : public Flag {
     private:
-        static constexpr Position default_pos{10.0, 0.0};
         Position pos;
 
     public:
@@ -61,7 +60,8 @@ class FixedFlag : public Flag {
         FixedFlag(const double latitude_deg, const double longitude_deg);
 
         Position get_flag_position() const override;
-        static Position get_default_pos();
 
         operator std::string() const override;
+
+        static constexpr Position default_pos{10.0, 0.0};
 };

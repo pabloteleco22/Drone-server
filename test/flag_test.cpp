@@ -10,7 +10,7 @@ const unsigned int MAX_REPETITIONS{100000};
 /*** FixedFlag Tests ***/
 TEST(FixedFlagTest, CheckDefaultPosition) {
     const Flag *fixed_flag{new FixedFlag};
-    Flag::Position expected_pos{FixedFlag::get_default_pos()};
+    Flag::Position expected_pos{FixedFlag::default_pos};
 
     ASSERT_EQ(fixed_flag->get_flag_position(), expected_pos);
 

@@ -51,11 +51,11 @@ Point Point::operator/(const double p) const {
 }
 
 bool Point::operator==(const Point &p) const {
-    return x == p.x && y == p.y;
+    return fabs(x - p.x) <= POLY_SPLIT_EPS && fabs(y - p.y) <= POLY_SPLIT_EPS;
 }
 
 bool Point::operator!=(const Point &p) const {
-    return fabs(x - p.x) >= POLY_SPLIT_EPS || fabs(y - p.y) >= POLY_SPLIT_EPS;
+    return fabs(x - p.x) > POLY_SPLIT_EPS || fabs(y - p.y) > POLY_SPLIT_EPS;
 }
 
 double Point::distance(const Point &p) const {

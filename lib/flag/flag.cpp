@@ -76,10 +76,6 @@ Flag::Position FixedFlag::get_flag_position() const {
     return pos;
 }
 
-Flag::Position FixedFlag::get_default_pos() {
-    return default_pos;
-}
-
 FixedFlag::operator std::string() const {
     return ("Latitude [deg]: " + std::to_string(pos.latitude_deg) + "\n"
             + "Longitude [deg]: " + std::to_string(pos.longitude_deg));
