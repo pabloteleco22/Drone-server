@@ -10,7 +10,7 @@ struct Vector {
     Vector(const Point &p);
     Vector(const Vector &v);
     Vector(double x=0.0f, double y=0.0f);
-    void operator=(const Vector &v);
+    Vector &operator=(const Vector &v);
     Vector operator-() const;
     Vector &operator+=(const Vector &v);
     Vector &operator-=(const Vector &v);

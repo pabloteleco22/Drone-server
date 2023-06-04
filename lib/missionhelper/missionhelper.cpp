@@ -143,7 +143,7 @@ void SpiralSweep::new_mission(const unsigned int number_of_systems, std::vector<
     // Cogemos el primer vértice del polígono
     std::vector<Segment> segment_vector{};
 
-    for (Point p : polygon_of_interest.get_vertex()) {
+    for (Point p : polygon_of_interest.get_vertices()) {
         segment_vector.push_back(Segment{p, center});
     }
 

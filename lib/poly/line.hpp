@@ -18,7 +18,7 @@ class Line {
     public:
         Line();
         Line(const Line &other);
-        Line(const Point &start, const Point &end);
+        Line(const Point &p1, const Point &p2);
         Line(double a, double b, double c);
 
         /**

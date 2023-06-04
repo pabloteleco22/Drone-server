@@ -309,7 +309,7 @@ int main(int argc, char *argv[]) {
 	logger->write(debug, "The flag is in:\n" + static_cast<string>(flag));
 
 	logger->write(debug, "Search area:");
-	for (auto v : search_area.get_vertex()) {
+	for (auto v : search_area.get_vertices()) {
 		logger->write(debug, "    " + static_cast<string>(v));
 	}
 

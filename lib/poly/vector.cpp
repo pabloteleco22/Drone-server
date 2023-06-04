@@ -14,8 +14,10 @@ Vector::Vector(double x, double y) {
     p.y = y;
 };
 
-void Vector::operator=(const Vector &v) {
+Vector &Vector::operator=(const Vector &v) {
     p = v.p;
+
+    return *this;
 }
 
 Vector Vector::operator-() const {

@@ -6,7 +6,7 @@
 
 class Polygon {
 private:
-    Points vertex;
+    Points vertices;
 
     static bool get_cut(const Segment &s1, const Segment &s2, double s,
                 const Polygon &poly1, const Polygon &poly2,
@@ -103,19 +103,19 @@ public:
      * within the edges of the polygon. 
      * 
      * @param
-     * excludeLine1: The index of the first segment to be disregarded in the analysis.
+     * exclude_line1: The index of the first segment to be disregarded in the analysis.
      * @param
-     * excludeLine2: The index of the second segment to be disregarded in the analysis.
+     * exclude_line2: The index of the second segment to be disregarded in the analysis.
     */
-    bool is_segment_inside(const Segment &segment, size_t excludeLine1, size_t excludeLine2) const;
+    bool is_segment_inside(const Segment &segment, size_t exclude_line1, size_t exclude_line2) const;
     
     /**
-     * @brief Returns true if the vertex are in clock wise order.
+     * @brief Returns true if the vertices are in clock wise order.
     */
     bool is_clockwise(void) const;
 
-    const Points get_vertex(void) const {
-        return vertex;
+    const Points get_vertices(void) const {
+        return vertices;
     }
 
     /**
@@ -128,39 +128,39 @@ public:
      * @brief Returns true if the polygon has no vertex.
     */
     bool empty(void) const {
-        return vertex.empty();
+        return vertices.empty();
     }
 
     Polygon &operator=(const Polygon &p) {
-        vertex = p.vertex;
+        vertices = p.vertices;
         return *this;
     }
 
     Point &operator[](size_t index) {
-        return vertex[index];
+        return vertices[index];
     }
 
     Point operator[](size_t index) const {
-        return vertex[index];
+        return vertices[index];
     }
 
     /**
      * @brief Removes all the vertex of the polygon.
     */
     void clear(void) {
-        vertex.clear();
+        vertices.clear();
     }
 
     /**
      * @brief Returns the number of vertex of the polygon.
     */
     size_t size(void) const {
-        return vertex.size();
+        return vertices.size();
     }
 };
 
 struct Polygons {
-    Polygons(const Segment &l1, const Segment &l2);
+    Polygons(const Segment &s1, const Segment &s2);
     bool find_cut_line(double square, Segment &cut_line);
 
     Line bisector;

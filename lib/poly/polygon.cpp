@@ -169,15 +169,15 @@ const char *Polygon::CannotSplitException::what() const noexcept {
 Polygon::Polygon() {}
 
 Polygon::Polygon(const Polygon &p) {
-    vertex = p.vertex;
+    vertices = p.vertices;
 }
 
 Polygon::Polygon(const Points &p) {
-    vertex = p;
+    vertices = p;
 }
 
 double Polygon::count_square_signed(void) const {
-    size_t pointsCount{vertex.size()};
+    size_t pointsCount{vertices.size()};
     if (pointsCount < 3) {
         return 0;
     }
@@ -185,11 +185,11 @@ double Polygon::count_square_signed(void) const {
     double result{0};
     for (size_t i = 0; i < pointsCount; i++) {
         if (i == 0)
-            result += vertex[i].x * (vertex[pointsCount - 1].y - vertex[i + 1].y);
+            result += vertices[i].x * (vertices[pointsCount - 1].y - vertices[i + 1].y);
         else if (i == pointsCount - 1)
-            result += vertex[i].x * (vertex[i - 1].y - vertex[0].y);
+            result += vertices[i].x * (vertices[i - 1].y - vertices[0].y);
         else
-            result += vertex[i].x * (vertex[i - 1].y - vertex[i + 1].y);
+            result += vertices[i].x * (vertices[i - 1].y - vertices[i + 1].y);
     }
 
     return result / 2.0;
@@ -200,9 +200,9 @@ double Polygon::count_square() const {
 }
 
 void Polygon::split(double square, Polygon &poly1, Polygon &poly2, Segment &cut_line) const {
-    int polygon_size{static_cast<int>(vertex.size())};
+    int polygon_size{static_cast<int>(vertices.size())};
 
-    Points polygon{vertex};
+    Points polygon{vertices};
     if (!is_clockwise()) {
         std::reverse(polygon.begin(), polygon.end());
     }
@@ -268,19 +268,19 @@ void Polygon::split(double square, Polygon &poly1, Polygon &poly2, Segment &cut_
 
 double Polygon::find_distance(const Point &point) const {
     double distance{std::numeric_limits<double>::infinity()};
-    int poly_size{static_cast<int>(vertex.size())};
+    int poly_size{static_cast<int>(vertices.size())};
     if (poly_size < 2)
         throw Polygon::NotEnoughPointsException{"The polygon has not enough vertices"};
 
     for (int i = 0; i < poly_size - 1; i++) {
-        Segment seg{vertex[i], vertex[i + 1]};
+        Segment seg{vertices[i], vertices[i + 1]};
         Point p{seg.get_nearest_point(point)};
         double l{p.distance(point)};
         if (l < distance)
             distance = l;
     }
     
-    Segment seg{vertex[poly_size - 1], vertex[0]};
+    Segment seg{vertices[poly_size - 1], vertices[0]};
     Point p{seg.get_nearest_point(point)};
     double l{p.distance(point)};
     if (l < distance)
@@ -292,12 +292,12 @@ double Polygon::find_distance(const Point &point) const {
 Point Polygon::find_nearest_point(const Point &point) const {
     Point result;
     double distance{std::numeric_limits<double>::infinity()};
-    int poly_size{static_cast<int>(vertex.size())};
+    int poly_size{static_cast<int>(vertices.size())};
     if (poly_size < 2)
         throw Polygon::NotEnoughPointsException{"The polygon has not enough vertices"};
 
     for (int i = 0; i < poly_size - 1; i++) {
-        Segment seg{vertex[i], vertex[i + 1]};
+        Segment seg{vertices[i], vertices[i + 1]};
         Point p{seg.get_nearest_point(point)};
         double l{(p.distance(point))};
         if (l < distance) {
@@ -306,7 +306,7 @@ Point Polygon::find_nearest_point(const Point &point) const {
         }
     }
 
-    Segment seg{vertex[poly_size - 1], vertex[0]};
+    Segment seg{vertices[poly_size - 1], vertices[0]};
     Point p{seg.get_nearest_point(point)};
     double l{(p.distance(point))};
     if (l < distance) {
@@ -318,12 +318,12 @@ Point Polygon::find_nearest_point(const Point &point) const {
 }
 
 Point Polygon::find_center() const {
-    int n{static_cast<int>(vertex.size())};
+    int n{static_cast<int>(vertices.size())};
     if (n <= 0)
         throw Polygon::NotEnoughPointsException{"The polygon has zero vertices"};
 
     Point result;
-    for (Point v : vertex) {
+    for (Point v : vertices) {
         result += v;
     }
     result /= n;
@@ -335,12 +335,12 @@ void Polygon::split_nearest_edge(const Point &point) {
     Point result;
     int ri{-1};
     double distance{std::numeric_limits<double>::infinity()};
-    int poly_size{static_cast<int>(vertex.size())};
+    int poly_size{static_cast<int>(vertices.size())};
     if (poly_size < 2)
         throw Polygon::NotEnoughPointsException{"The polygon has less than two vertices"};
 
     for (int i = 0; i < poly_size - 1; i++) {
-        Segment seg{vertex[i], vertex[i + 1]};
+        Segment seg{vertices[i], vertices[i + 1]};
         Point p{seg.get_nearest_point(point)};
         double l{p.distance(point)};
         if (l < distance) {
@@ -349,22 +349,22 @@ void Polygon::split_nearest_edge(const Point &point) {
             result = p;
         }
     }
-    Segment seg{vertex[poly_size - 1], vertex[0]};
+    Segment seg{vertices[poly_size - 1], vertices[0]};
     Point p{seg.get_nearest_point(point)};
     double l{p.distance(point)};
     if (l < distance) {
         distance = l;
-        ri = vertex.size() - 1;
+        ri = vertices.size() - 1;
         result = p;
     }
 
-    if ((ri != -1) and (vertex[ri] != result) and (vertex[ri + 1] != result)) {
-        vertex.insert(vertex.begin() + ri + 1, result);
+    if ((ri != -1) and (vertices[ri] != result) and (vertices[ri + 1] != result)) {
+        vertices.insert(vertices.begin() + ri + 1, result);
     }
 }
 
 bool Polygon::is_point_inside(const Point &point) const {
-    int pointsCount{static_cast<int>(vertex.size()) - 1};
+    int pointsCount{static_cast<int>(vertices.size()) - 1};
     if (pointsCount < 2)
         throw Polygon::NotEnoughPointsException{"The polygon has not enough vertices"};
 
@@ -372,24 +372,24 @@ bool Polygon::is_point_inside(const Point &point) const {
     int result{0};
     Point p;
     for (int i = 0; i < pointsCount; i++) {
-        Segment seg{vertex[i], vertex[i + 1]};
+        Segment seg{vertices[i], vertices[i + 1]};
         result += s.cross_line(seg, p);
     }
-    Segment seg{vertex[pointsCount], vertex[0]};
+    Segment seg{vertices[pointsCount], vertices[0]};
     result += s.cross_line(seg, p);
     return result % 2 != 0;
 }
 
 bool Polygon::is_segment_inside(const Segment &segment, size_t excludeLine1, size_t excludeLine2) const {
-    size_t pointsCount{vertex.size()};
+    size_t pointsCount{vertices.size()};
 
     if (pointsCount < 3)
         throw Polygon::NotEnoughPointsException{"The polygon has not enough vertices"};
 
     for (size_t i = 0; i < pointsCount; i++) {
         if (i != excludeLine1 && i != excludeLine2) {
-            Point p1{vertex[i]};
-            Point p2{vertex[i + 1 < pointsCount ? i + 1 : 0]};
+            Point p1{vertices[i]};
+            Point p2{vertices[i + 1 < pointsCount ? i + 1 : 0]};
             Point p;
             if ((Segment{p1, p2}.cross_line(segment, p)) and
                 (p1.square_distance(p) > POLY_SPLIT_EPS) and
@@ -403,15 +403,15 @@ bool Polygon::is_segment_inside(const Segment &segment, size_t excludeLine1, siz
 }
 
 bool Polygon::is_clockwise() const {
-    if (vertex.size() < 2)
+    if (vertices.size() < 2)
         throw Polygon::NotEnoughPointsException{"The polygon has not enough vertices"};
 
     double sum{0};
-    int t{static_cast<int>(vertex.size()) - 1};
+    int t{static_cast<int>(vertices.size()) - 1};
     for (int i = 0; i < t; i++) {
-        sum += (vertex[i + 1].x - vertex[i].x) * (vertex[i + 1].y + vertex[i].y);
+        sum += (vertices[i + 1].x - vertices[i].x) * (vertices[i + 1].y + vertices[i].y);
     }
-    sum += (vertex[0].x - vertex[t].x) * (vertex[0].y + vertex[t].y);
+    sum += (vertices[0].x - vertices[t].x) * (vertices[0].y + vertices[t].y);
     return sum <= 0;
 }
 
@@ -442,5 +442,5 @@ bool Polygon::get_cut(const Segment &s1, const Segment &s2, double s,
 }
 
 void Polygon::push_back(const Point &p) {
-    vertex.push_back(p);
+    vertices.push_back(p);
 }
