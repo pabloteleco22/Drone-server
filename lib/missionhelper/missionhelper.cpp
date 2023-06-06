@@ -152,25 +152,36 @@ void SpiralSweep::new_mission(const unsigned int number_of_systems, std::vector<
     while (!segment_vector.empty()) {
         Point p{it->get_point_along(separation)};
 
-        mission.push_back(MissionHelper::make_mission_item(
-            p.x,
-            p.y,
-            altitude,
-            5.0f,
-            false,
-            20.0f,
-            60.0f,
-            Mission::MissionItem::CameraAction::None)
-        );
+        if (p != center) {
+            mission.push_back(MissionHelper::make_mission_item(
+                p.x,
+                p.y,
+                altitude,
+                5.0f,
+                false,
+                20.0f,
+                60.0f,
+                Mission::MissionItem::CameraAction::None)
+            );
 
-        if (p == center) {
-            segment_vector.erase(it);
-        } else {
             *it = Segment{p, center};
             ++it;
+        } else {
+            segment_vector.erase(it);
         }
 
         if (it == segment_vector.end())
             it = segment_vector.begin();
     }
+
+    mission.push_back(MissionHelper::make_mission_item(
+        center.x,
+        center.y,
+        altitude,
+        5.0f,
+        false,
+        20.0f,
+        60.0f,
+        Mission::MissionItem::CameraAction::None)
+    );
 }
