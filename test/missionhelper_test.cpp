@@ -88,14 +88,14 @@ TEST(GoCenterTest, NewMission4) {
     delete mission_helper;
 }
 
-TEST(SpiralSweepTest, NewMission4) {
+TEST(SpiralSweepCenterTest, NewMission1) {
     Polygon poly;
     poly.push_back({47.3978,8.5456});
     poly.push_back({47.3978,8.5468});
     poly.push_back({47.3980,8.5468});
     poly.push_back({47.3980,8.5456});
 
-    MissionHelper *mission_helper{new SpiralSweep{poly, 0.000018}};
+    MissionHelper *mission_helper{new SpiralSweepCenter{poly, 0.000018}};
     std::vector<Mission::MissionItem> mission_item_list;
 
     ASSERT_NO_THROW(mission_helper->new_mission(1, mission_item_list, 1));
@@ -108,14 +108,54 @@ TEST(SpiralSweepTest, NewMission4) {
     delete mission_helper;
 }
 
-TEST(SpiralSweepTest, NewMission5) {
+TEST(SpiralSweepCenterTest, NewMission2) {
     Polygon poly;
     poly.push_back({});
     poly.push_back({0, 90});
     poly.push_back({20, 90});
     poly.push_back({20, 0});
 
-    MissionHelper *mission_helper{new SpiralSweep{poly, 5}};
+    MissionHelper *mission_helper{new SpiralSweepCenter{poly, 5}};
+    std::vector<Mission::MissionItem> mission_item_list;
+
+    ASSERT_NO_THROW(mission_helper->new_mission(1, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 2));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 3));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 4));
+
+    delete mission_helper;
+}
+
+TEST(SpiralSweepEdgeTest, NewMission1) {
+    Polygon poly;
+    poly.push_back({47.3978,8.5456});
+    poly.push_back({47.3978,8.5468});
+    poly.push_back({47.3980,8.5468});
+    poly.push_back({47.3980,8.5456});
+
+    MissionHelper *mission_helper{new SpiralSweepEdge{poly, 0.000018}};
+    std::vector<Mission::MissionItem> mission_item_list;
+
+    ASSERT_NO_THROW(mission_helper->new_mission(1, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 2));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 3));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 4));
+
+    delete mission_helper;
+}
+
+TEST(SpiralSweepEdgeTest, NewMission2) {
+    Polygon poly;
+    poly.push_back({});
+    poly.push_back({0, 90});
+    poly.push_back({20, 90});
+    poly.push_back({20, 0});
+
+    MissionHelper *mission_helper{new SpiralSweepEdge{poly, 5}};
     std::vector<Mission::MissionItem> mission_item_list;
 
     ASSERT_NO_THROW(mission_helper->new_mission(1, mission_item_list, 1));

@@ -39,8 +39,20 @@ struct GoCenter : public PolySplitMission {
     virtual void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, const unsigned int system_id=256) const;
 };
 
-struct SpiralSweep : public PolySplitMission {
-    SpiralSweep(Polygon area, const double separation) : PolySplitMission(area) {
+struct SpiralSweepCenter : public PolySplitMission {
+    SpiralSweepCenter(Polygon area, const double separation) : PolySplitMission(area) {
+        this->separation = separation;
+    };
+    virtual void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id=256) const;
+
+    private:
+        double separation;
+        static unsigned int auto_system_id;
+        static std::mutex mut;
+};
+
+struct SpiralSweepEdge : public PolySplitMission {
+    SpiralSweepEdge(Polygon area, const double separation) : PolySplitMission(area) {
         this->separation = separation;
     };
     virtual void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id=256) const;
