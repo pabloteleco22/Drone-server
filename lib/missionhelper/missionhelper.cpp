@@ -1,5 +1,7 @@
 #include "missionhelper.hpp"
 
+#include <algorithm>
+
 CannotMakeMission::CannotMakeMission(std::string message) {
     this->message = "CannotMakeMission: " + message;
 }
@@ -144,15 +146,16 @@ void SpiralSweep::new_mission(const unsigned int number_of_systems, std::vector<
     std::vector<Segment> segment_vector{};
 
     for (Point p : polygon_of_interest.get_vertices()) {
-        segment_vector.push_back(Segment{p, center});
+        segment_vector.push_back(Segment{center, p});
     }
 
     auto it{segment_vector.begin()};
 
     while (!segment_vector.empty()) {
         Point p{it->get_point_along(separation)};
+        Point end{it->get_end()};
 
-        if (p != center) {
+        if (p != end) {
             mission.push_back(MissionHelper::make_mission_item(
                 p.x,
                 p.y,
@@ -164,7 +167,7 @@ void SpiralSweep::new_mission(const unsigned int number_of_systems, std::vector<
                 Mission::MissionItem::CameraAction::None)
             );
 
-            *it = Segment{p, center};
+            *it = Segment{p, end};
             ++it;
         } else {
             segment_vector.erase(it);
@@ -173,6 +176,8 @@ void SpiralSweep::new_mission(const unsigned int number_of_systems, std::vector<
         if (it == segment_vector.end())
             it = segment_vector.begin();
     }
+
+    std::reverse(mission.begin(), mission.end());
 
     mission.push_back(MissionHelper::make_mission_item(
         center.x,
