@@ -15,12 +15,12 @@ std::mutex SearchController::mut{};
 SearchController::SearchController(mavsdk::Telemetry *telemetry,
                     const Flag *flag,
                     std::function<void(Flag::Position, bool)> callback,
-                    double position_rate, double separation) {
+                    double position_rate, double detection_radius) {
     this->telemetry = telemetry;
     this->flag = flag;
     this->callback = callback;
     this->position_rate = position_rate;
-    this->separation = separation;
+    this->detection_radius = detection_radius;
 }
 
 MissionControllerStatus SearchController::mission_control() {
@@ -38,8 +38,13 @@ MissionControllerStatus SearchController::mission_control() {
         bool flag_found;
         bool flag_found_by_me{false};
 
-        if ((std::fabs(pos.latitude_deg - flag_pos.latitude_deg) < separation) and
-        (std::fabs(pos.longitude_deg - flag_pos.longitude_deg) < separation)) {
+        //if ((std::fabs(pos.latitude_deg - flag_pos.latitude_deg) < detection_radius) and
+        //(std::fabs(pos.longitude_deg - flag_pos.longitude_deg) < detection_radius)) {
+
+        if (std::sqrt(
+                std::pow(flag_pos.latitude_deg - pos.latitude_deg, 2) +
+                std::pow(flag_pos.longitude_deg - pos.longitude_deg, 2)
+                ) < detection_radius) {
             this->mut.lock();
             this->flag_found = true;
             flag_found = true;

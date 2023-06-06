@@ -2303,7 +2303,7 @@
 							"font": "Arial;13;0",
 							"left": 456,
 							"top": 21,
-							"width": 100.21533203125,
+							"width": 98,
 							"height": 38,
 							"autoResize": true,
 							"text": "Hereda de std::exception"
@@ -27112,7 +27112,7 @@
 									"font": "Arial;13;0",
 									"left": 48,
 									"top": 320,
-									"width": 235.0625,
+									"width": 236,
 									"height": 38
 								},
 								{
@@ -30037,7 +30037,7 @@
 									"font": "Arial;13;0",
 									"left": 320,
 									"top": 528,
-									"width": 109.34716796875,
+									"width": 112,
 									"height": 23
 								},
 								{
@@ -37195,7 +37195,7 @@
 									"font": "Arial;13;0",
 									"left": 152,
 									"top": 96,
-									"width": 109.34716796875,
+									"width": 112,
 									"height": 23
 								},
 								{
@@ -39014,7 +39014,7 @@
 									"font": "Arial;13;0",
 									"left": 106,
 									"top": 113,
-									"width": 235.0625,
+									"width": 236,
 									"height": 38
 								},
 								{
@@ -41941,7 +41941,7 @@
 									"font": "Arial;13;0",
 									"left": 450,
 									"top": 377,
-									"width": 109.34716796875,
+									"width": 112,
 									"height": 23
 								},
 								{
@@ -60859,7 +60859,7 @@
 											},
 											"visible": false,
 											"font": "Arial;13;0",
-											"left": -272,
+											"left": -304,
 											"top": -288,
 											"height": 13
 										},
@@ -60870,9 +60870,9 @@
 												"$ref": "AAAAAAGIcYwh8i6vpRw="
 											},
 											"font": "Arial;13;1",
-											"left": 61,
+											"left": 45,
 											"top": 535,
-											"width": 808.9580078125,
+											"width": 843.64794921875,
 											"height": 13,
 											"text": "SearchController"
 										},
@@ -60884,7 +60884,7 @@
 											},
 											"visible": false,
 											"font": "Arial;13;0",
-											"left": -272,
+											"left": -304,
 											"top": -288,
 											"width": 138.68994140625,
 											"height": 13,
@@ -60898,16 +60898,16 @@
 											},
 											"visible": false,
 											"font": "Arial;13;0",
-											"left": -272,
+											"left": -304,
 											"top": -288,
 											"height": 13,
 											"horizontalAlignment": 1
 										}
 									],
 									"font": "Arial;13;0",
-									"left": 56,
+									"left": 40,
 									"top": 528,
-									"width": 818.9580078125,
+									"width": 853.64794921875,
 									"height": 25,
 									"stereotypeLabel": {
 										"$ref": "AAAAAAGIcYwh8i6wXiM="
@@ -60932,9 +60932,9 @@
 										"$ref": "AAAAAAGIcYwh7S6sC4I="
 									},
 									"font": "Arial;13;0",
-									"left": 56,
+									"left": 40,
 									"top": 553,
-									"width": 818.9580078125,
+									"width": 853.64794921875,
 									"height": 10
 								},
 								{
@@ -60957,18 +60957,18 @@
 												"$ref": "AAAAAAGIcZFlUi+WeUc="
 											},
 											"font": "Arial;13;0",
-											"left": 61,
+											"left": 45,
 											"top": 568,
-											"width": 808.9580078125,
+											"width": 843.64794921875,
 											"height": 13,
-											"text": "+SearchController(telemetry: Telemetry*, flag: Flag*, callback: function<void(Flag::Position, bool)>, position_rate: double, separation: double)",
+											"text": "+SearchController(telemetry: Telemetry*, flag: Flag*, callback: function<void(Flag::Position, bool)>, position_rate: double, detection_radius: double)",
 											"horizontalAlignment": 0
 										}
 									],
 									"font": "Arial;13;0",
-									"left": 56,
+									"left": 40,
 									"top": 563,
-									"width": 818.9580078125,
+									"width": 853.64794921875,
 									"height": 23
 								},
 								{
@@ -60982,7 +60982,7 @@
 									},
 									"visible": false,
 									"font": "Arial;13;0",
-									"left": -136,
+									"left": -152,
 									"top": -144,
 									"width": 10,
 									"height": 10
@@ -60998,7 +60998,7 @@
 									},
 									"visible": false,
 									"font": "Arial;13;0",
-									"left": -136,
+									"left": -152,
 									"top": -144,
 									"width": 10,
 									"height": 10
@@ -61006,9 +61006,9 @@
 							],
 							"font": "Arial;13;0",
 							"containerChangeable": true,
-							"left": 56,
+							"left": 40,
 							"top": 528,
-							"width": 818.9580078125,
+							"width": 853.64794921875,
 							"height": 58,
 							"nameCompartment": {
 								"$ref": "AAAAAAGIcYwh8i6vpRw="
@@ -62106,7 +62106,7 @@
 									"_parent": {
 										"$ref": "AAAAAAGIcZFlUi+WeUc="
 									},
-									"name": "separation",
+									"name": "detection_radius",
 									"type": "double"
 								}
 							]
