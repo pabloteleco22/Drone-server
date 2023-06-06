@@ -26,6 +26,11 @@ SearchController::SearchController(mavsdk::Telemetry *telemetry,
 MissionControllerStatus SearchController::mission_control() {
     // Establecer a un segundo la frecuencia de transmisión de la posición
     mavsdk::Telemetry::Result result{telemetry->set_rate_position(position_rate)};
+    if (result != mavsdk::Telemetry::Result::Success) {
+        MCSSuscribePositionFailure failure;
+        return failure;
+    }
+
     // Pedir regularmente la posición de los drones
     telemetry->subscribe_position(
         [this](mavsdk::Telemetry::Position pos) {
@@ -54,11 +59,6 @@ MissionControllerStatus SearchController::mission_control() {
     }
     );
 
-    if (result == mavsdk::Telemetry::Result::Success) {
-        MCSSuccess success;
-        return success;
-    } else {
-        MCSSuscribePositionFailure failure;
-        return failure;
-    }
+    MCSSuccess success;
+    return success;
 }
