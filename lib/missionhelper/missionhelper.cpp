@@ -146,74 +146,6 @@ void SpiralSweepCenter::new_mission(const unsigned int number_of_systems, std::v
     std::vector<Segment> segment_vector{};
 
     for (Point p : polygon_of_interest.get_vertices()) {
-        segment_vector.push_back(Segment{p, center});
-    }
-
-    auto it{segment_vector.begin()};
-
-    while (!segment_vector.empty()) {
-        Point p{it->get_point_along(separation)};
-
-        if (p != center) {
-            mission.push_back(MissionHelper::make_mission_item(
-                p.x,
-                p.y,
-                altitude,
-                5.0f,
-                false,
-                20.0f,
-                60.0f,
-                Mission::MissionItem::CameraAction::None)
-            );
-
-            *it = Segment{p, center};
-            ++it;
-        } else {
-            segment_vector.erase(it);
-        }
-
-        if (it == segment_vector.end())
-            it = segment_vector.begin();
-    }
-
-    mission.push_back(MissionHelper::make_mission_item(
-        center.x,
-        center.y,
-        altitude,
-        5.0f,
-        false,
-        20.0f,
-        60.0f,
-        Mission::MissionItem::CameraAction::None)
-    );
-}
-
-unsigned int SpiralSweepEdge::auto_system_id{1};
-std::mutex SpiralSweepEdge::mut{};
-
-void SpiralSweepEdge::new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id) const {
-    Polygon polygon_of_interest;
-
-    if (system_id > 255) {
-        mut.lock();
-        system_id = auto_system_id;
-        ++auto_system_id;
-        if (auto_system_id > number_of_systems) auto_system_id = 1;
-        mut.unlock();
-    }
-
-    get_polygon_of_interest(system_id, number_of_systems, &polygon_of_interest);
-
-    float altitude{static_cast<float>(system_id)};
-    const float altitude_offset{10.0f};
-    altitude += altitude_offset;
-
-    const Point center{polygon_of_interest.find_center()};
-
-    // Cogemos el primer vértice del polígono
-    std::vector<Segment> segment_vector{};
-
-    for (Point p : polygon_of_interest.get_vertices()) {
         segment_vector.push_back(Segment{center, p});
     }
 
@@ -257,4 +189,61 @@ void SpiralSweepEdge::new_mission(const unsigned int number_of_systems, std::vec
         60.0f,
         Mission::MissionItem::CameraAction::None)
     );
+}
+
+unsigned int SpiralSweepEdge::auto_system_id{1};
+std::mutex SpiralSweepEdge::mut{};
+
+void SpiralSweepEdge::new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id) const {
+    Polygon polygon_of_interest;
+
+    if (system_id > 255) {
+        mut.lock();
+        system_id = auto_system_id;
+        ++auto_system_id;
+        if (auto_system_id > number_of_systems) auto_system_id = 1;
+        mut.unlock();
+    }
+
+    get_polygon_of_interest(system_id, number_of_systems, &polygon_of_interest);
+
+    float altitude{static_cast<float>(system_id)};
+    const float altitude_offset{10.0f};
+    altitude += altitude_offset;
+
+    const Point center{polygon_of_interest.find_center()};
+
+    // Cogemos el primer vértice del polígono
+    std::vector<Segment> segment_vector{};
+
+    for (Point p : polygon_of_interest.get_vertices()) {
+        segment_vector.push_back(Segment{p, center});
+    }
+
+    auto it{segment_vector.begin()};
+
+    while (!segment_vector.empty()) {
+        Point p{it->get_point_along(separation)};
+
+        if (p != center) {
+            mission.push_back(MissionHelper::make_mission_item(
+                p.x,
+                p.y,
+                altitude,
+                5.0f,
+                false,
+                20.0f,
+                60.0f,
+                Mission::MissionItem::CameraAction::None)
+            );
+
+            *it = Segment{p, center};
+            ++it;
+        } else {
+            segment_vector.erase(it);
+        }
+
+        if (it == segment_vector.end())
+            it = segment_vector.begin();
+    }
 }

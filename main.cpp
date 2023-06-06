@@ -316,7 +316,7 @@ int main(int argc, char *argv[]) {
 	geometry::CoordinateTransformation::GlobalCoordinate base{coordinate_transformation.global_from_local({0, 0})};
 	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({5, 0})};
 	logger->write(debug, "Separation: " + std::to_string(separation.latitude_deg - base.latitude_deg));
-	SpiralSweepEdge mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
+	SpiralSweepCenter mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
 
 	PercentageCheck enough_systems{static_cast<float>(expected_systems), PERCENTAGE_DRONES_REQUIRED};
 
