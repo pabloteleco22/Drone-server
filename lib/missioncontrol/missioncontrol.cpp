@@ -38,13 +38,10 @@ MissionControllerStatus SearchController::mission_control() {
         bool flag_found;
         bool flag_found_by_me{false};
 
-        //if ((std::fabs(pos.latitude_deg - flag_pos.latitude_deg) < detection_radius) and
-        //(std::fabs(pos.longitude_deg - flag_pos.longitude_deg) < detection_radius)) {
-
         if (std::sqrt(
                 std::pow(flag_pos.latitude_deg - pos.latitude_deg, 2) +
                 std::pow(flag_pos.longitude_deg - pos.longitude_deg, 2)
-                ) < detection_radius) {
+                ) <= detection_radius) {
             this->mut.lock();
             this->flag_found = true;
             flag_found = true;

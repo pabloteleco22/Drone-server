@@ -581,6 +581,10 @@ ProRetCod operation_return_to_launch_altitude(OperationTools &operation, ReturnT
 		ActionFailure failure;
 		ret = failure;
 		operation.set_failure(failure, not args->enough_systems->exists_enough_systems());
+		std::ostringstream os;
+		os << action_result;
+		logger->write(error, "Error in setting the return to launch altitude on system " + std::to_string(args->system_id) +
+						": " + os.str());
 		logger->write(error, "System " + std::to_string(args->system_id) + " discarded. " + args->enough_systems->get_status());
 	}
 
@@ -595,6 +599,18 @@ ProRetCod operation_set_mission_controller(OperationTools &operation, SetMission
 
 	MissionControllerStatus mission_controller_status{args->mission_controller->mission_control()};
 	MCSSuccess mcs_success;
+	unsigned int attempts{MAX_ATTEMPTS};
+	while((mission_controller_status != mcs_success) and (attempts > 0)) {
+		--attempts;
+
+		logger->write(warning, "Error setting the mission controller in system " +
+						std::to_string(args->system_id) + ": " + mission_controller_status.get_string() +
+						". Remaining attempts: " + std::to_string(attempts));
+	
+		std::this_thread::sleep_for(REFRESH_TIME);
+
+		mission_controller_status = args->mission_controller->mission_control();
+	}
 
 	if (mission_controller_status == mcs_success) {
 		logger->write(info, "System " + std::to_string(args->system_id) + " mission controller ready");

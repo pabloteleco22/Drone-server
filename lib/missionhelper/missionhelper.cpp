@@ -48,15 +48,15 @@ void PolySplitMission::get_polygon_of_interest(const unsigned int system_id, con
     double partial_area{helper.count_square() / static_cast<double>(number_of_systems)};
 
     if (partial_area <= 0) {
-        throw CannotMakeMission("The required area is zero or less");
+        throw CannotMakeMission{"The required area is zero or less"};
     }
 
     if (system_id <= 0) {
-        throw CannotMakeMission("The system ID must be greater than 0");
+        throw CannotMakeMission{"The system ID must be greater than 0"};
     }
 
     if (system_id > number_of_systems) {
-        throw CannotMakeMission("The system ID must be less than or equal to the number of systems");
+        throw CannotMakeMission{"The system ID must be less than or equal to the number of systems"};
     }
 
     Polygon poly1;
