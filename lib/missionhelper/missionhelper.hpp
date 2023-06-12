@@ -36,14 +36,14 @@ struct PolySplitMission : public MissionHelper {
 
 struct GoCenter : public PolySplitMission {
     using PolySplitMission::PolySplitMission;
-    virtual void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, const unsigned int system_id=256) const;
+    void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, const unsigned int system_id=256) const override;
 };
 
 struct SpiralSweepCenter : public PolySplitMission {
     SpiralSweepCenter(Polygon area, const double separation) : PolySplitMission(area) {
         this->separation = separation;
     };
-    virtual void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id=256) const;
+    void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id=256) const override;
 
     private:
         double separation;
@@ -55,10 +55,24 @@ struct SpiralSweepEdge : public PolySplitMission {
     SpiralSweepEdge(Polygon area, const double separation) : PolySplitMission(area) {
         this->separation = separation;
     };
-    virtual void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id=256) const;
+    void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id=256) const override;
 
     private:
         double separation;
         static unsigned int auto_system_id;
         static std::mutex mut;
+};
+
+struct ParallelSweep : public PolySplitMission {
+    ParallelSweep(Polygon area, const double separation) : PolySplitMission(area) {
+        this->separation = separation;
+    }
+    void new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id=256) const override;
+
+    private:
+        double separation;
+        static unsigned int auto_system_id;
+        static std::mutex mut;
+
+        std::vector<Point> cross_point(const Polygon &poly, const Line &l) const;
 };

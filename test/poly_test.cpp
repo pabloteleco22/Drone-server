@@ -126,6 +126,18 @@ TEST(VectorTest, Absolute) {
     ASSERT_EQ(vec.abs(), expected_vec);
 }
 
+TEST(VectorTest, Norm) {
+    const double x{3};
+    const double y{4};
+    const double expected_x{4};
+    const double expected_y{-3};
+
+    const Vector vec{x, y};
+    const Vector expected_vec{expected_x, expected_y};
+
+    ASSERT_EQ(vec.norm(), expected_vec);
+}
+
 /* Line Tests */
 TEST(LineTest, DefaultLine) {
     const Line lin;

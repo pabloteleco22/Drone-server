@@ -142,7 +142,6 @@ void SpiralSweepCenter::new_mission(const unsigned int number_of_systems, std::v
 
     const Point center{polygon_of_interest.find_center()};
 
-    // Cogemos el primer vértice del polígono
     std::vector<Segment> segment_vector{};
 
     for (Point p : polygon_of_interest.get_vertices()) {
@@ -213,7 +212,6 @@ void SpiralSweepEdge::new_mission(const unsigned int number_of_systems, std::vec
 
     const Point center{polygon_of_interest.find_center()};
 
-    // Cogemos el primer vértice del polígono
     std::vector<Segment> segment_vector{};
 
     for (Point p : polygon_of_interest.get_vertices()) {
@@ -246,4 +244,176 @@ void SpiralSweepEdge::new_mission(const unsigned int number_of_systems, std::vec
         if (it == segment_vector.end())
             it = segment_vector.begin();
     }
+}
+
+unsigned int ParallelSweep::auto_system_id{1};
+std::mutex ParallelSweep::mut{};
+
+void ParallelSweep::new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id) const {
+    Polygon polygon_of_interest;
+
+    if (system_id > 255) {
+        mut.lock();
+        system_id = auto_system_id;
+        ++auto_system_id;
+        if (auto_system_id > number_of_systems) auto_system_id = 1;
+        mut.unlock();
+    }
+
+    get_polygon_of_interest(system_id, number_of_systems, &polygon_of_interest);
+
+    float altitude{static_cast<float>(system_id)};
+    const float altitude_offset{10.0f};
+    altitude += altitude_offset;
+
+    Vector dir{polygon_of_interest[1] - polygon_of_interest[0]};
+    Vector norm{dir.norm().unit() * separation};
+    Line base_line{polygon_of_interest[0], dir};
+    Line tmp{base_line};
+
+    bool cont{true};
+    bool alt{true};
+
+    do {
+        tmp = Line{tmp.get_p1() + norm, dir};
+        
+        std::vector<Point> cross_points{cross_point(polygon_of_interest, tmp)};
+
+        if (cross_points.size() == 0) {
+            cont = false;
+        } else {
+            double max{0};
+            double min{0};
+
+            for (unsigned int i = 1; i < cross_points.size(); ++i){
+                if ((cross_points[max].y < cross_points[i].y) or
+                        ((cross_points[max].y == cross_points[i].y) and
+                        (cross_points[max].x < cross_points[i].x))
+                    ) {
+                    max = i;
+                }
+
+                if ((cross_points[min].y > cross_points[i].y) or
+                        ((cross_points[min].y == cross_points[i].y) and
+                        (cross_points[min].x > cross_points[i].x))
+                    ) {
+                    min = i;
+                }
+            }
+
+            Point first{cross_points[alt ? max : min]};
+            Point second{cross_points[alt ? min : max]};
+
+            first = first + (-dir);
+            second = second + dir;
+
+            mission.push_back(MissionHelper::make_mission_item(
+                first.x,
+                first.y,
+                altitude,
+                5.0f,
+                false,
+                20.0f,
+                60.0f,
+                Mission::MissionItem::CameraAction::None)
+            );
+
+            if (cross_points.size() > 1) {
+                mission.push_back(MissionHelper::make_mission_item(
+                    second.x,
+                    second.y,
+                    altitude,
+                    5.0f,
+                    false,
+                    20.0f,
+                    60.0f,
+                    Mission::MissionItem::CameraAction::None)
+                );
+            }
+
+            alt = not alt;
+        }
+    } while (cont);
+
+    std::reverse(mission.begin(), mission.end());
+    norm = -norm;
+    cont = true;
+
+    do {
+        tmp = Line{tmp.get_p1() + norm, dir};
+        
+        std::vector<Point> cross_points{cross_point(polygon_of_interest, tmp)};
+
+        if (cross_points.size() == 0) {
+            cont = false;
+        } else {
+            double max{0};
+            double min{0};
+
+            for (unsigned int i = 1; i < cross_points.size(); ++i){
+                if ((cross_points[max].y < cross_points[i].y) or
+                        ((cross_points[max].y == cross_points[i].y) and
+                        (cross_points[max].x < cross_points[i].x))
+                    ) {
+                    max = i;
+                }
+
+                if ((cross_points[min].y > cross_points[i].y) or
+                        ((cross_points[min].y == cross_points[i].y) and
+                        (cross_points[min].x > cross_points[i].x))
+                    ) {
+                    min = i;
+                }
+            }
+
+            mission.push_back(MissionHelper::make_mission_item(
+                cross_points[alt ? max : min].x,
+                cross_points[alt ? max : min].y,
+                altitude,
+                5.0f,
+                false,
+                20.0f,
+                60.0f,
+                Mission::MissionItem::CameraAction::None)
+            );
+
+            if (cross_points.size() > 1) {
+                mission.push_back(MissionHelper::make_mission_item(
+                    cross_points[alt ? min : max].x,
+                    cross_points[alt ? min : max].y,
+                    altitude,
+                    5.0f,
+                    false,
+                    20.0f,
+                    60.0f,
+                    Mission::MissionItem::CameraAction::None)
+                );
+            }
+
+            alt = not alt;
+        }
+    } while (cont);
+}
+
+std::vector<Point> ParallelSweep::cross_point(const Polygon &poly, const Line &l) const {
+    size_t len{poly.size()};
+    std::vector<Point> cross_points{};
+    Point p;
+    bool success;
+    bool possible{true};
+
+    size_t i{0};
+    while ((i < len) and (possible)) {
+        Segment s{poly[i], poly[(i + 1) % len]};
+        if (s.make_line() == l)
+            possible = false;
+
+        success = s.cross_line(l, p);
+
+        if (success)
+            cross_points.push_back(p);
+        ++i;
+    }
+
+    return cross_points;
 }

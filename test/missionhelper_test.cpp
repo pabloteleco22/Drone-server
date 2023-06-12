@@ -167,3 +167,23 @@ TEST(SpiralSweepEdgeTest, NewMission2) {
 
     delete mission_helper;
 }
+
+TEST(ParallelSweep, NewMission) {
+    Polygon poly;
+    poly.push_back({});
+    poly.push_back({0, 90});
+    poly.push_back({20, 90});
+    poly.push_back({20, 0});
+
+    MissionHelper *mission_helper{new ParallelSweep{poly, 1}};
+    std::vector<Mission::MissionItem> mission_item_list;
+
+    ASSERT_NO_THROW(mission_helper->new_mission(1, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 2));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 3));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 4));
+
+    delete mission_helper;
+}

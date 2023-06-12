@@ -23,6 +23,7 @@ struct Vector {
     double dot(const Vector &v) const;
     double length(void) const;
     double square_length(void) const;
+    Vector unit(void) const;
     Vector norm(void) const;
     bool operator==(const Vector &v) const;
     bool operator!=(const Vector &v) const;

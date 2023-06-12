@@ -149,7 +149,7 @@ double Line::square_length() const {
 }
 
 Point Line::get_point_along(double t) const {
-    return p1 + Vector{p2 - p1}.norm() * t;
+    return p1 + Vector{p2 - p1}.unit() * t;
 }
 
 std::ostream &operator<<(std::ostream &out, const Line &l) {

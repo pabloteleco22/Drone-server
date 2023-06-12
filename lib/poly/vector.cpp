@@ -76,12 +76,19 @@ double Vector::square_length(void) const {
     return p.square_distance({0, 0});
 }
 
-Vector Vector::norm(void) const {
+Vector Vector::unit(void) const {
     double l = length();
     if (l == 0)
         return Vector{};
     else
         return Vector{p / l};
+}
+
+Vector Vector::norm(void) const {
+    if (length() == 0)
+        return Vector{};
+    else
+        return Vector{y, -x};
 }
 
 bool Vector::operator==(const Vector &v) const {
