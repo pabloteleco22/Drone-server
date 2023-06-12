@@ -368,7 +368,7 @@ bool Polygon::is_point_inside(const Point &point) const {
     if (pointsCount < 2)
         throw Polygon::NotEnoughPointsException{"The polygon has not enough vertices"};
 
-    Segment s{Line::directed_line(point, Vector{0.0, 1e100})};
+    Segment s{Line{point, Vector{0.0, 1e100}}};
     int result{0};
     Point p;
     for (int i = 0; i < pointsCount; i++) {

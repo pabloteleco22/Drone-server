@@ -263,7 +263,7 @@ TEST(LineTest, IsSameTrue1) {
     const Line line1{start_point1, end_point1};
     const Line line2{start_point2, end_point2};
 
-    ASSERT_TRUE(Line::is_same(line1, line2));
+    ASSERT_TRUE(line1 == line2);
 }
 
 TEST(LineTest, IsSameTrue2) {
@@ -274,7 +274,7 @@ TEST(LineTest, IsSameTrue2) {
     const Line line1{start_point1, end_point1};
     const Line line2{start_point2, end_point2};
 
-    ASSERT_TRUE(Line::is_same(line1, line2));
+    ASSERT_TRUE(line1 == line2);
 }
 
 TEST(LineTest, IsSameFalse) {
@@ -285,7 +285,7 @@ TEST(LineTest, IsSameFalse) {
     const Line line1{start_point1, end_point1};
     const Line line2{start_point2, end_point2};
 
-    ASSERT_FALSE(Line::is_same(line1, line2));
+    ASSERT_FALSE(line1 == line2);
 }
 
 TEST(LineTest, Bisector1) {
@@ -348,13 +348,13 @@ TEST(LineTest, TanAngle1) {
 
 TEST(LineTest, DirectedLine) {
     const Point point{1, 2};
-    const Point vector{1, 1};
-    const Line result_line = Line::directed_line(point, vector);
+    const Vector vector{1, 1};
+    const Line result_line{point, vector};
     const Point expected_start_point{1, 2};
     const Point expected_end_point{4.5, 5.5};
     const Line expected_line{expected_start_point, expected_end_point};
 
-    ASSERT_TRUE(Line::is_same(result_line, expected_line));
+    ASSERT_EQ(result_line, expected_line);
 }
 
 /* Segment Tests */
@@ -563,7 +563,7 @@ TEST(SegmentTest, IsSameTrue) {
     const Segment seg1{start_point1, end_point1};
     const Segment seg2{start_point2, end_point2};
 
-    ASSERT_TRUE(Segment::is_same(seg1, seg2));
+    ASSERT_TRUE(seg1 == seg2);
 }
 
 TEST(SegmentTest, IsSameFalse1) {
@@ -574,7 +574,7 @@ TEST(SegmentTest, IsSameFalse1) {
     const Segment seg1{start_point1, end_point1};
     const Segment seg2{start_point2, end_point2};
 
-    ASSERT_FALSE(Segment::is_same(seg1, seg2));
+    ASSERT_FALSE(seg1 == seg2);
 }
 
 TEST(SegmentTest, IsSameFalse2) {
@@ -585,7 +585,7 @@ TEST(SegmentTest, IsSameFalse2) {
     const Segment seg1{start_point1, end_point1};
     const Segment seg2{start_point2, end_point2};
 
-    ASSERT_FALSE(Segment::is_same(seg1, seg2));
+    ASSERT_FALSE(seg1 == seg2);
 }
 
 TEST(SegmentTest, Bisector1) {

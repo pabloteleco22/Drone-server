@@ -181,13 +181,6 @@ Segment &Segment::operator=(const Segment &other) {
 }
 
 /**
- * @brief Returns true if l1 and l2 are the same line
-*/
-bool Segment::is_same(const Segment &l1, const Segment &l2) {
-    return l1 == l2;
-}
-
-/**
  * @brief Returns the bisector between the two lines
 */
 Line Segment::get_bisector(const Segment &seg1, const Segment &seg2) {

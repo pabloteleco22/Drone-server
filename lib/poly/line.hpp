@@ -20,6 +20,7 @@ class Line {
         Line(const Line &other);
         Line(const Point &p1, const Point &p2);
         Line(double a, double b, double c);
+        Line(Point p, Vector v);
 
         /**
          * @brief It returns the start point of the segment
@@ -73,11 +74,6 @@ class Line {
         Line &operator=(const Line &other);
 
         /**
-         * @brief Returns true if l1 and l2 are the same line
-        */
-        static bool is_same(const Line &l1, const Line &l2);
-
-        /**
          * @brief Returns the bisector between the two lines
         */
         static Line get_bisector(const Line &l1, const Line &l2);
@@ -86,16 +82,6 @@ class Line {
          * @brief Returns the tangent of the angle between the two lines in radians
         */
         static double get_tan_angle(const Line &l1, const Line &l2);
-
-        /**
-         * @brief Returns a line from a point and a vector
-         * 
-         * @param
-         * p: Point
-         * @param
-         * d: Vector
-        */
-        static Line directed_line(const Point &p, const Vector &v);
 
         friend std::ostream &operator<<(std::ostream &out, const Line &l);
         friend class Segment;
@@ -190,11 +176,6 @@ class Segment {
 
         bool operator==(const Segment &other) const;
         Segment &operator=(const Segment &other);
-
-        /**
-         * @brief Returns true if s1 and s2 are the same line
-        */
-        static bool is_same(const Segment &s1, const Segment &s2);
 
         /**
          * @brief Returns the bisector between the two lines

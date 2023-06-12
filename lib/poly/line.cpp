@@ -47,6 +47,8 @@ Line::Line(double a, double b, double c) : a{a}, b{b}, c{c} {
     }
 }
 
+Line::Line(Point p, Vector v) : Line(p, p + v) {}
+
 double Line::get_distance(const Point &point) const {
     double n{a * point.x + b * point.y + c};
     double m{sqrt(a * a + b * b)};
@@ -112,10 +114,6 @@ Line &Line::operator=(const Line &other) {
     return *this;
 }
 
-bool Line::is_same(const Line &l1, const Line &l2) {
-    return l1 == l2;
-}
-
 Line Line::get_bisector(const Line &l1, const Line &l2) {
     if (l1 == l2) {
         return Line{l1};
@@ -152,10 +150,6 @@ double Line::square_length() const {
 
 Point Line::get_point_along(double t) const {
     return p1 + Vector{p2 - p1}.norm() * t;
-}
-
-Line Line::directed_line(const Point &p, const Vector &v) {
-    return Line{p, p + v};
 }
 
 std::ostream &operator<<(std::ostream &out, const Line &l) {
