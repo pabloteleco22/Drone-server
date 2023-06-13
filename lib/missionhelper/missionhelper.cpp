@@ -304,8 +304,8 @@ void ParallelSweep::new_mission(const unsigned int number_of_systems, std::vecto
             Point first{cross_points[alt ? max : min]};
             Point second{cross_points[alt ? min : max]};
 
-            first = first + (-dir);
-            second = second + dir;
+            first = first + ((-dir) * separation);
+            second = second + (dir * separation);
 
             mission.push_back(MissionHelper::make_mission_item(
                 first.x,
@@ -338,6 +338,7 @@ void ParallelSweep::new_mission(const unsigned int number_of_systems, std::vecto
     std::reverse(mission.begin(), mission.end());
     norm = -norm;
     cont = true;
+    tmp = base_line;
 
     do {
         tmp = Line{tmp.get_p1() + norm, dir};
@@ -365,6 +366,12 @@ void ParallelSweep::new_mission(const unsigned int number_of_systems, std::vecto
                     min = i;
                 }
             }
+
+            Point first{cross_points[alt ? min : max]};
+            Point second{cross_points[alt ? max : min]};
+
+            first = first + ((-dir) * separation);
+            second = second + (dir * separation);
 
             mission.push_back(MissionHelper::make_mission_item(
                 cross_points[alt ? max : min].x,
