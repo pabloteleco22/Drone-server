@@ -5,6 +5,8 @@
 #include <exception>
 #include <cmath>
 
+using namespace poly_private;
+
 Polygons::Polygons(const Segment &s1, const Segment &s2) {
     bisector = Segment::get_bisector(s1, s2);
 

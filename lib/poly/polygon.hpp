@@ -159,6 +159,7 @@ public:
     }
 };
 
+namespace poly_private {
 struct Polygons {
     Polygons(const Segment &s1, const Segment &s2);
     bool find_cut_line(double square, Segment &cut_line);
@@ -178,4 +179,5 @@ struct Polygons {
     double trapezoid_square;
     double right_triangle_square;
     double total_square;
+};
 };
