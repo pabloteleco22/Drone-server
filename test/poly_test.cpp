@@ -515,6 +515,20 @@ TEST(SegmentTest, CrossSegmentLineTrue) {
     ASSERT_EQ(inter_point, expected_inter_point);
 }
 
+TEST(SegmentTest, CrossSegmentLineTrue2) {
+    const Point line_start_point;
+    const Point line_end_point{4, 4};
+    const Point segment_start_point{4, 4};
+    const Point segment_end_point{6, 0};
+    Point inter_point;
+    const Point expected_inter_point{4, 4};
+    const Line line{line_start_point, line_end_point};
+    const Segment segment{segment_start_point, segment_end_point};
+
+    ASSERT_TRUE(segment.cross_line(line, inter_point));
+    ASSERT_EQ(inter_point, expected_inter_point);
+}
+
 TEST(SegmentTest, CrossSegmentLineFalse) {
     const Point line_start_point{0, 6};
     const Point line_end_point{18, 0};

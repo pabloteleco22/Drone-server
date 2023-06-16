@@ -187,3 +187,28 @@ TEST(ParallelSweep, NewMission) {
 
     delete mission_helper;
 }
+
+TEST(ParallelSweep, NewMission2) {
+    Polygon poly;
+    poly.push_back({-20, 10});
+	poly.push_back({-10, 30});
+	poly.push_back({7.5, 30});
+	poly.push_back({15, 10});
+	poly.push_back({22.5, 20});
+	poly.push_back({30, -10});
+	poly.push_back({-25, -10});
+	poly.push_back({-40, -5});
+	poly.push_back({-30, 20});
+
+    MissionHelper *mission_helper{new ParallelSweep{poly, 5}};
+    std::vector<Mission::MissionItem> mission_item_list;
+
+    ASSERT_NO_THROW(mission_helper->new_mission(1, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 1));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 2));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 3));
+    ASSERT_NO_THROW(mission_helper->new_mission(4, mission_item_list, 4));
+
+    delete mission_helper;
+}

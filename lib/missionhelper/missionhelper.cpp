@@ -1,6 +1,7 @@
 #include "missionhelper.hpp"
 
 #include <algorithm>
+#include <functional>
 
 CannotMakeMission::CannotMakeMission(std::string message) {
     this->message = "CannotMakeMission: " + message;
@@ -266,140 +267,103 @@ void ParallelSweep::new_mission(const unsigned int number_of_systems, std::vecto
     const float altitude_offset{10.0f};
     altitude += altitude_offset;
 
-    Vector dir{polygon_of_interest[1] - polygon_of_interest[0]};
-    Vector norm{dir.norm().unit() * separation};
-    Line base_line{polygon_of_interest[0], dir};
-    Line tmp{base_line};
+    const Vector dir{polygon_of_interest[1] - polygon_of_interest[0]};
+    const Vector norm{dir.norm().unit() * separation};
+    const Line base_line{polygon_of_interest[0], dir};
+    std::function<void(const bool, const Vector)> sweep{
+        [base_line, dir, polygon_of_interest, altitude, *this, &mission](const bool first, const Vector norm) {
+            Line tmp{base_line};
 
-    bool cont{true};
-    bool alt{true};
+            bool cont{true};
+            bool alt{true};
 
-    do {
-        tmp = Line{tmp.get_p1() + norm, dir};
-        
-        std::vector<Point> cross_points{cross_point(polygon_of_interest, tmp)};
+            if (first)
+                tmp = Line{tmp.get_p1() + norm, dir};
 
-        if (cross_points.size() == 0) {
-            cont = false;
-        } else {
-            double max{0};
-            double min{0};
+            do {
+                std::vector<Point> cross_points{cross_point(polygon_of_interest, tmp)};
 
-            for (unsigned int i = 1; i < cross_points.size(); ++i){
-                if ((cross_points[max].y < cross_points[i].y) or
-                        ((cross_points[max].y == cross_points[i].y) and
-                        (cross_points[max].x < cross_points[i].x))
-                    ) {
-                    max = i;
+                tmp = Line{tmp.get_p1() + norm, dir};
+
+                if (cross_points.size() == 0) {
+                    cont = false;
+                } else if (cross_points.size() == 1) {
+                    mission.push_back(MissionHelper::make_mission_item(
+                        cross_points[0].x,
+                        cross_points[0].y,
+                        altitude,
+                        5.0f,
+                        false,
+                        20.0f,
+                        60.0f,
+                        Mission::MissionItem::CameraAction::None)
+                    );
+                } else {
+                    double max{0};
+                    double min{0};
+
+                    for (unsigned int i = 1; i < cross_points.size(); ++i){
+                        if ((cross_points[max].y < cross_points[i].y) or
+                                ((cross_points[max].y == cross_points[i].y) and
+                                (cross_points[max].x < cross_points[i].x))
+                            ) {
+                            max = i;
+                        }
+
+                        if ((cross_points[min].y > cross_points[i].y) or
+                                ((cross_points[min].y == cross_points[i].y) and
+                                (cross_points[min].x > cross_points[i].x))
+                            ) {
+                            min = i;
+                        }
+                    }
+
+                    Point first{cross_points[alt ? max : min]};
+                    Point second{cross_points[alt ? min : max]};
+
+                    Vector side{Vector{second - first}.unit()};
+                    
+                    double distance{first.distance(second)};
+                    if (distance > 2 * separation) {
+                        first = first + (side * separation);
+                        second = second + ((-side) * separation);
+                    } else if (distance > separation) {
+                        first = first + (side * separation);
+                    }
+
+                    mission.push_back(MissionHelper::make_mission_item(
+                        first.x,
+                        first.y,
+                        altitude,
+                        5.0f,
+                        false,
+                        20.0f,
+                        60.0f,
+                        Mission::MissionItem::CameraAction::None)
+                    );
+
+                    mission.push_back(MissionHelper::make_mission_item(
+                        second.x,
+                        second.y,
+                        altitude,
+                        5.0f,
+                        false,
+                        20.0f,
+                        60.0f,
+                        Mission::MissionItem::CameraAction::None)
+                    );
+
+                    alt = not alt;
                 }
-
-                if ((cross_points[min].y > cross_points[i].y) or
-                        ((cross_points[min].y == cross_points[i].y) and
-                        (cross_points[min].x > cross_points[i].x))
-                    ) {
-                    min = i;
-                }
-            }
-
-            Point first{cross_points[alt ? max : min]};
-            Point second{cross_points[alt ? min : max]};
-
-            first = first + ((-dir) * separation);
-            second = second + (dir * separation);
-
-            mission.push_back(MissionHelper::make_mission_item(
-                first.x,
-                first.y,
-                altitude,
-                5.0f,
-                false,
-                20.0f,
-                60.0f,
-                Mission::MissionItem::CameraAction::None)
-            );
-
-            if (cross_points.size() > 1) {
-                mission.push_back(MissionHelper::make_mission_item(
-                    second.x,
-                    second.y,
-                    altitude,
-                    5.0f,
-                    false,
-                    20.0f,
-                    60.0f,
-                    Mission::MissionItem::CameraAction::None)
-                );
-            }
-
-            alt = not alt;
+            } while (cont);
         }
-    } while (cont);
+    };
+
+    sweep(true, norm);
 
     std::reverse(mission.begin(), mission.end());
-    norm = -norm;
-    cont = true;
-    tmp = base_line;
 
-    do {
-        tmp = Line{tmp.get_p1() + norm, dir};
-        
-        std::vector<Point> cross_points{cross_point(polygon_of_interest, tmp)};
-
-        if (cross_points.size() == 0) {
-            cont = false;
-        } else {
-            double max{0};
-            double min{0};
-
-            for (unsigned int i = 1; i < cross_points.size(); ++i){
-                if ((cross_points[max].y < cross_points[i].y) or
-                        ((cross_points[max].y == cross_points[i].y) and
-                        (cross_points[max].x < cross_points[i].x))
-                    ) {
-                    max = i;
-                }
-
-                if ((cross_points[min].y > cross_points[i].y) or
-                        ((cross_points[min].y == cross_points[i].y) and
-                        (cross_points[min].x > cross_points[i].x))
-                    ) {
-                    min = i;
-                }
-            }
-
-            Point first{cross_points[alt ? min : max]};
-            Point second{cross_points[alt ? max : min]};
-
-            first = first + ((-dir) * separation);
-            second = second + (dir * separation);
-
-            mission.push_back(MissionHelper::make_mission_item(
-                cross_points[alt ? max : min].x,
-                cross_points[alt ? max : min].y,
-                altitude,
-                5.0f,
-                false,
-                20.0f,
-                60.0f,
-                Mission::MissionItem::CameraAction::None)
-            );
-
-            if (cross_points.size() > 1) {
-                mission.push_back(MissionHelper::make_mission_item(
-                    cross_points[alt ? min : max].x,
-                    cross_points[alt ? min : max].y,
-                    altitude,
-                    5.0f,
-                    false,
-                    20.0f,
-                    60.0f,
-                    Mission::MissionItem::CameraAction::None)
-                );
-            }
-
-            alt = not alt;
-        }
-    } while (cont);
+    sweep(false, -norm);
 }
 
 std::vector<Point> ParallelSweep::cross_point(const Polygon &poly, const Line &l) const {
@@ -407,19 +371,14 @@ std::vector<Point> ParallelSweep::cross_point(const Polygon &poly, const Line &l
     std::vector<Point> cross_points{};
     Point p;
     bool success;
-    bool possible{true};
 
-    size_t i{0};
-    while ((i < len) and (possible)) {
+    for (size_t i = 0; i < len; ++i) {
         Segment s{poly[i], poly[(i + 1) % len]};
-        if (s.make_line() == l)
-            possible = false;
 
         success = s.cross_line(l, p);
 
         if (success)
             cross_points.push_back(p);
-        ++i;
     }
 
     return cross_points;
