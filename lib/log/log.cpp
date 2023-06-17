@@ -80,7 +80,7 @@ TimedLoggerDecoration::TimedLoggerDecoration(TimedLoggerDecoration &other) : Log
 
 string TimedLoggerDecoration::get_decoration() const {
     std::ostringstream os;
-    os << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start_time).count() << " | ";
+    os << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start_time) << " | ";
     
     return os.str();
 }

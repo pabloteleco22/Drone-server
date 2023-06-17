@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
 		exit(BadArgument::code);
 	}
 
-	HourLoggerDecoration logger_decoration;
+	TimedLoggerDecoration logger_decoration;
 	UserCustomGreeter custom_greeter{[](const string &m) {
 		HourLoggerDecoration decoration;
 
@@ -234,11 +234,13 @@ int main(int argc, char *argv[]) {
 
 	logger = new BiLogger{&thread_standard_logger, &stream_loggers};
 
+	/*
 	UserCustomFilter filter{[](const Level &level) {
 		return level > debug;
 	}};
 
 	logger->set_level_filter(&filter);
+	*/
 
 	// Constants
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
@@ -272,11 +274,13 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_min()});
 	*/
 
-	FixedFlag flag{Flag::Position{47.397953, 8.545955}}; // Encuentra para un rectángulo de 20x90
+	//FixedFlag flag{Flag::Position{47.397953, 8.545955}}; // Encuentra para un rectángulo de 20x90
 	//FixedFlag flag{Flag::Position{47.397868, 8.545665}}; // Encuentra para un rectángulo de 20x90
-	//FixedFlag flag{Flag::Position{100, 100}};
+	FixedFlag flag{Flag::Position{100, 100}};
+	//FixedFlag flag{Flag::Position{47.397586, 8.5455620}};
 	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
 	Polygon search_area;
+	/*
 	global_coordinate = coordinate_transformation.global_from_local({0, 0});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({0, 90});
@@ -285,6 +289,7 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({20, 0});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	*/
 	/*
 	global_coordinate = coordinate_transformation.global_from_local({-10, -10});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
@@ -305,6 +310,34 @@ int main(int argc, char *argv[]) {
 	global_coordinate = coordinate_transformation.global_from_local({30, -40});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	*/
+	/*
+	global_coordinate = coordinate_transformation.global_from_local({-40, 0});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({0, 30});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({30, 0});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({0, -40});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	*/
+	global_coordinate = coordinate_transformation.global_from_local({-20, 10});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({-10, 30});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({7.5, 30});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({15, 10});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({22.5, 20});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({30, -10});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({-25, -10});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({-40, -5});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	global_coordinate = coordinate_transformation.global_from_local({-30, 20});
+	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 
 	logger->write(debug, "The flag is in:\n" + static_cast<string>(flag));
 
@@ -316,7 +349,8 @@ int main(int argc, char *argv[]) {
 	geometry::CoordinateTransformation::GlobalCoordinate base{coordinate_transformation.global_from_local({0, 0})};
 	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({5, 0})};
 	logger->write(debug, "Separation: " + std::to_string(separation.latitude_deg - base.latitude_deg));
-	SpiralSweepCenter mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
+	ParallelSweep mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
+	//SpiralSweepCenter mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
 
 	PercentageCheck enough_systems{static_cast<float>(expected_systems), PERCENTAGE_DRONES_REQUIRED};
 
@@ -635,7 +669,7 @@ ProRetCod operation_make_mission_plan(OperationTools &operation, MakeMissionPlan
 	vector<Mission::MissionItem> mission_item_vector;
 
 	try {
-		args->mission_helper->new_mission(args->enough_systems->get_number_of_systems(), mission_item_vector);
+		args->mission_helper->new_mission(args->enough_systems->get_number_of_systems(), mission_item_vector, args->system_id);
 	} catch (const CannotMakeMission &e) {
 		logger->write(critical, "System " + std::to_string(args->system_id) + " cannot make a mission: " + e.what());
 
