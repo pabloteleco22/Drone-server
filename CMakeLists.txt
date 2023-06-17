@@ -62,7 +62,6 @@ target_link_libraries(flag_test
     GTest::gtest_main
     GTest::gmock
     Flag
-    MAVSDK::mavsdk
 )
 
 ##------------------ Mission helper test ------------------##
@@ -73,7 +72,6 @@ add_executable(missionhelper_test
 target_link_libraries(missionhelper_test
     GTest::gtest_main
     MissionHelper
-    Poly
 )
 
 ##------------------ Operation test ------------------##

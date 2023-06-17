@@ -3,6 +3,8 @@
 #include <mavsdk/plugins/telemetry/telemetry.h>
 #include <string>
 
+#include "../poly/polygon.hpp"
+
 using namespace mavsdk;
 
 struct Flag {
@@ -15,9 +17,12 @@ struct Flag {
         }
     };
 
-    virtual ~Flag() {};
-    virtual Position get_flag_position() const = 0;
-    virtual operator std::string() const = 0;
+    virtual ~Flag() = 0;
+    Position get_flag_position() const;
+    operator std::string() const;
+
+    protected:
+        Position pos;
 };
 
 class RandomFlag : public Flag {
@@ -40,28 +45,24 @@ class RandomFlag : public Flag {
         inline static const MaxMin default_longitude_deg_interval{10, -10};
 
         RandomFlag(const MaxMin &latitude_deg_interval=default_latitude_deg_interval,
-                   const MaxMin &longitude_deg_interval=default_longitude_deg_interval);
-        Position get_flag_position() const override;
-        operator std::string() const override;
+                   const MaxMin &longitude_deg_interval=default_longitude_deg_interval,
+                   const bool use_seed=true);
 
     private:
-        Position pos;
         MaxMin latitude_deg_interval{default_latitude_deg_interval};
         MaxMin longitude_deg_interval{default_longitude_deg_interval};
 };
 
-class FixedFlag : public Flag {
-    private:
-        Position pos;
+class RandomFlagPoly : public Flag {
+    public:
+        RandomFlagPoly(const Polygon polygon, const bool use_seed=true);
+};
 
+class FixedFlag : public Flag {
     public:
         FixedFlag();
         FixedFlag(Position pos);
         FixedFlag(const double latitude_deg, const double longitude_deg);
-
-        Position get_flag_position() const override;
-
-        operator std::string() const override;
 
         static constexpr Position default_pos{10.0, 0.0};
 };

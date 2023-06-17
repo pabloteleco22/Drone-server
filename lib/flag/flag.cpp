@@ -2,6 +2,17 @@
 
 #include <time.h>
 
+Flag::~Flag() {}
+
+Flag::Position Flag::get_flag_position() const {
+    return pos;
+}
+
+Flag::operator std::string() const {
+    return ("Latitude [deg]: " + std::to_string(pos.latitude_deg) + "\n"
+            + "Longitude [deg]: " + std::to_string(pos.longitude_deg));
+}
+
 RandomFlag::MaxMin::MaxMin(double n1, double n2) {
     if (n1 > n2) {
         this->max = n1;
@@ -36,8 +47,9 @@ double RandomFlag::MaxMin::get_interval() const {
     return this->max - this->min;
 }
 
-RandomFlag::RandomFlag(const MaxMin &latitude_deg_interval, const MaxMin &longitude_deg_interval) {
-    srand(time(NULL));
+RandomFlag::RandomFlag(const MaxMin &latitude_deg_interval, const MaxMin &longitude_deg_interval, const bool use_seed) {
+    if (use_seed)
+        srand(time(NULL));
 
     this->latitude_deg_interval = latitude_deg_interval;
     this->longitude_deg_interval = longitude_deg_interval;
@@ -55,13 +67,39 @@ RandomFlag::RandomFlag(const MaxMin &latitude_deg_interval, const MaxMin &longit
     }
 }
 
-Flag::Position RandomFlag::get_flag_position() const {
-    return pos;
-}
+RandomFlagPoly::RandomFlagPoly(const Polygon polygon, const bool use_seed) {
+    Point max{polygon[0]};
+    Point min{polygon[0]};
 
-RandomFlag::operator std::string() const {
-    return ("Latitude [deg]: " + std::to_string(pos.latitude_deg) + "\n"
-            + "Longitude [deg]: " + std::to_string(pos.longitude_deg));
+    size_t poly_size{polygon.size()};
+
+    for (size_t i = 0; i < poly_size; ++i) {
+        if (min.x > polygon[i].x)
+            min.x = polygon[i].x;
+
+        if (min.y > polygon[i].y)
+            min.y = polygon[i].y;
+
+        if (max.x < polygon[i].x)
+            max.x = polygon[i].x;
+
+        if (max.y < polygon[i].y)
+            max.y = polygon[i].y;
+    }
+
+    RandomFlag::MaxMin maxmin_latitude_deg{max.x, min.x};
+    RandomFlag::MaxMin maxmin_longitude_deg{max.y, min.y};
+
+    bool cont{true};
+    do {
+        Position r_pos{RandomFlag{maxmin_latitude_deg, maxmin_longitude_deg, use_seed}
+            .get_flag_position()};
+
+        if (polygon.is_point_inside(Point{r_pos.latitude_deg, r_pos.longitude_deg})) {
+            pos = r_pos;
+            cont = false;
+        }
+    } while (cont);
 }
 
 FixedFlag::FixedFlag() {
@@ -70,13 +108,4 @@ FixedFlag::FixedFlag() {
 
 FixedFlag::FixedFlag(Position pos) {
     this->pos = pos;
-}
-
-Flag::Position FixedFlag::get_flag_position() const {
-    return pos;
-}
-
-FixedFlag::operator std::string() const {
-    return ("Latitude [deg]: " + std::to_string(pos.latitude_deg) + "\n"
-            + "Longitude [deg]: " + std::to_string(pos.longitude_deg));
 }
