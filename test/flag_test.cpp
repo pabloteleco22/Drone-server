@@ -124,3 +124,22 @@ TEST(RandomFlagPolyTest, CheckCustomPosition) {
         ASSERT_TRUE(poly.is_point_inside(point));
     }
 }
+
+TEST(RandomFlagPolyTest, CheckCustomPosition2) {
+    Polygon poly;
+	poly.push_back({-20, 10});
+	poly.push_back({-10, 30});
+	poly.push_back({7.5, 30});
+	poly.push_back({15, 10});
+	poly.push_back({22.5, 20});
+	poly.push_back({30, -10});
+	poly.push_back({-25, -10});
+	poly.push_back({-40, -5});
+	poly.push_back({-30, 20});
+
+    for (unsigned int i = 0; i < MAX_REPETITIONS; ++i) {
+        Flag::Position pos{RandomFlagPoly{poly, false}.get_flag_position()};
+        Point point{pos.latitude_deg, pos.longitude_deg};
+        ASSERT_TRUE(poly.is_point_inside(point));
+    }
+}
