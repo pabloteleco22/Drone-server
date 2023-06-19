@@ -55,6 +55,13 @@ double RandomFlag::MaxMin::get_interval() const {
     return this->max - this->min;
 }
 
+/** 
+ * @brief Generates a flag in a given area.
+ * 
+ * @param use_seed:
+ * Indicates whether a time seed should be used when generating random numbers.
+ * Otherwise the default seed will be used.
+ */
 RandomFlag::RandomFlag(const bool use_seed) {
     if (use_seed)
         srand(time(NULL));
@@ -75,6 +82,13 @@ RandomFlag::RandomFlag(const bool use_seed) {
     }
 }
 
+/** 
+ * @brief Generates a flag in a given area.
+ * 
+ * @param use_seed:
+ * Indicates whether a time seed should be used when generating random numbers.
+ * Otherwise the default seed will be used.
+ */
 RandomFlag::RandomFlag(const MaxMin &latitude_deg_interval, const MaxMin &longitude_deg_interval, const bool use_seed) {
     if (use_seed)
         srand(time(NULL));
@@ -95,6 +109,13 @@ RandomFlag::RandomFlag(const MaxMin &latitude_deg_interval, const MaxMin &longit
     }
 }
 
+/** 
+ * @brief Generates a flag in a given area.
+ * 
+ * @param use_seed:
+ * Indicates whether a time seed should be used when generating random numbers.
+ * Otherwise the default seed will be used.
+ */
 RandomFlagPoly::RandomFlagPoly(const bool use_seed) {
     Polygon polygon;
     
@@ -136,6 +157,17 @@ RandomFlagPoly::RandomFlagPoly(const bool use_seed) {
     } while (cont);
 }
 
+/** 
+ * @brief Generates a flag in a given area.
+ * 
+ * @param polygon:
+ * Accepts a polygon that delimits the region over which the flag can be generated.
+ * Vertices are points that follow the format (latitude, longitude).
+ * 
+ * @param use_seed:
+ * Indicates whether a time seed should be used when generating random numbers.
+ * Otherwise the default seed will be used.
+ */
 RandomFlagPoly::RandomFlagPoly(const Polygon polygon, const bool use_seed) {
     Point max{polygon[0]};
     Point min{polygon[0]};

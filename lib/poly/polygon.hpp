@@ -35,7 +35,8 @@ public:
             CannotSplitException (const char *message);
             const char *what() const noexcept override;
     };
-/**
+
+    /**
      * @brief Returns the polygon area.
     */
     double count_square(void) const;
