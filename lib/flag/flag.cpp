@@ -13,6 +13,14 @@ Flag::operator std::string() const {
             + "Longitude [deg]: " + std::to_string(pos.longitude_deg));
 }
 
+FixedFlag::FixedFlag() {
+    pos = default_pos;
+}
+
+FixedFlag::FixedFlag(Position pos) {
+    this->pos = pos;
+}
+
 RandomFlag::MaxMin::MaxMin(double n1, double n2) {
     if (n1 > n2) {
         this->max = n1;
@@ -47,6 +55,26 @@ double RandomFlag::MaxMin::get_interval() const {
     return this->max - this->min;
 }
 
+RandomFlag::RandomFlag(const bool use_seed) {
+    if (use_seed)
+        srand(time(NULL));
+
+    latitude_deg_interval = default_latitude_deg_interval;
+    longitude_deg_interval = default_longitude_deg_interval;
+
+    if (latitude_deg_interval.get_interval() != 0) {
+        pos.latitude_deg = latitude_deg_interval.get_min() + latitude_deg_interval.get_interval() * static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+    } else {
+        pos.latitude_deg = latitude_deg_interval.get_max();
+    }
+
+    if (longitude_deg_interval.get_interval() != 0) {
+        pos.longitude_deg = longitude_deg_interval.get_min() + longitude_deg_interval.get_interval() * static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+    } else {
+        pos.longitude_deg = longitude_deg_interval.get_max();
+    }
+}
+
 RandomFlag::RandomFlag(const MaxMin &latitude_deg_interval, const MaxMin &longitude_deg_interval, const bool use_seed) {
     if (use_seed)
         srand(time(NULL));
@@ -65,6 +93,47 @@ RandomFlag::RandomFlag(const MaxMin &latitude_deg_interval, const MaxMin &longit
     } else {
         pos.longitude_deg = longitude_deg_interval.get_max();
     }
+}
+
+RandomFlagPoly::RandomFlagPoly(const bool use_seed) {
+    Polygon polygon;
+    
+    for (Point vertex : default_polygon_vertex){
+        polygon.push_back(vertex);
+    }
+
+    Point max{polygon[0]};
+    Point min{polygon[0]};
+
+    size_t poly_size{polygon.size()};
+
+    for (size_t i = 0; i < poly_size; ++i) {
+        if (min.x > polygon[i].x)
+            min.x = polygon[i].x;
+
+        if (min.y > polygon[i].y)
+            min.y = polygon[i].y;
+
+        if (max.x < polygon[i].x)
+            max.x = polygon[i].x;
+
+        if (max.y < polygon[i].y)
+            max.y = polygon[i].y;
+    }
+
+    RandomFlag::MaxMin maxmin_latitude_deg{max.x, min.x};
+    RandomFlag::MaxMin maxmin_longitude_deg{max.y, min.y};
+
+    bool cont{true};
+    do {
+        Position r_pos{RandomFlag{maxmin_latitude_deg, maxmin_longitude_deg, use_seed}
+            .get_flag_position()};
+
+        if (polygon.is_point_inside(Point{r_pos.latitude_deg, r_pos.longitude_deg})) {
+            pos = r_pos;
+            cont = false;
+        }
+    } while (cont);
 }
 
 RandomFlagPoly::RandomFlagPoly(const Polygon polygon, const bool use_seed) {
@@ -100,12 +169,4 @@ RandomFlagPoly::RandomFlagPoly(const Polygon polygon, const bool use_seed) {
             cont = false;
         }
     } while (cont);
-}
-
-FixedFlag::FixedFlag() {
-    pos = default_pos;
-}
-
-FixedFlag::FixedFlag(Position pos) {
-    this->pos = pos;
 }

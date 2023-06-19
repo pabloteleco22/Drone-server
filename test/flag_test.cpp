@@ -43,8 +43,7 @@ TEST(RandomFlagTest, CheckDefaultPosition) {
     const Flag *random_flag;
 
     for (unsigned int i = 0; i < MAX_REPETITIONS; ++i) {
-        random_flag = new RandomFlag{RandomFlag::default_latitude_deg_interval,
-                                        RandomFlag::default_longitude_deg_interval, false};
+        random_flag = new RandomFlag{false};
         const Flag::Position position{random_flag->get_flag_position()};
 
         ASSERT_LE(position.latitude_deg, RandomFlag::default_latitude_deg_interval.get_max());
@@ -78,8 +77,7 @@ TEST(RandomFlagTest, CheckStringCasting) {
     const Flag *random_flag;
 
     for (unsigned int i = 0; i < MAX_REPETITIONS; ++i) {
-        random_flag = new RandomFlag{RandomFlag::default_latitude_deg_interval,
-                                        RandomFlag::default_longitude_deg_interval, false};
+        random_flag = new RandomFlag{false};
         
         const std::string ret{static_cast<std::string>(*random_flag)};
 
@@ -111,6 +109,20 @@ TEST(RandomFlagMaxMinTest, CheckInterval) {
 }
 
 /*** RandomFlagPoly Tests ***/
+TEST(RandomFlagPolyTest, CheckDefaultPosition) {
+    Polygon poly;
+
+    for (Point vertex : RandomFlagPoly::default_polygon_vertex) {
+        poly.push_back(vertex);
+    }
+
+    for (unsigned int i = 0; i < MAX_REPETITIONS; ++i) {
+        Flag::Position pos{RandomFlagPoly{false}.get_flag_position()};
+        Point point{pos.latitude_deg, pos.longitude_deg};
+        ASSERT_TRUE(poly.is_point_inside(point));
+    }
+}
+
 TEST(RandomFlagPolyTest, CheckCustomPosition) {
     Polygon poly;
     poly.push_back({0, 1});

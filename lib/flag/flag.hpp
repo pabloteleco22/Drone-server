@@ -2,6 +2,7 @@
 
 #include <mavsdk/plugins/telemetry/telemetry.h>
 #include <string>
+#include <array>
 
 #include "../poly/polygon.hpp"
 
@@ -25,6 +26,15 @@ struct Flag {
         Position pos;
 };
 
+class FixedFlag : public Flag {
+    public:
+        FixedFlag();
+        FixedFlag(Position pos);
+        FixedFlag(const double latitude_deg, const double longitude_deg);
+
+        static constexpr Position default_pos{10.0, 0.0};
+};
+
 class RandomFlag : public Flag {
     public:
         class MaxMin {
@@ -44,8 +54,9 @@ class RandomFlag : public Flag {
         inline static const MaxMin default_latitude_deg_interval{10, -10};
         inline static const MaxMin default_longitude_deg_interval{10, -10};
 
-        RandomFlag(const MaxMin &latitude_deg_interval=default_latitude_deg_interval,
-                   const MaxMin &longitude_deg_interval=default_longitude_deg_interval,
+        RandomFlag(const bool use_seed=true);
+        RandomFlag(const MaxMin &latitude_deg_interval,
+                   const MaxMin &longitude_deg_interval,
                    const bool use_seed=true);
 
     private:
@@ -55,14 +66,11 @@ class RandomFlag : public Flag {
 
 class RandomFlagPoly : public Flag {
     public:
+        RandomFlagPoly(const bool use_seed=true);
         RandomFlagPoly(const Polygon polygon, const bool use_seed=true);
-};
 
-class FixedFlag : public Flag {
-    public:
-        FixedFlag();
-        FixedFlag(Position pos);
-        FixedFlag(const double latitude_deg, const double longitude_deg);
-
-        static constexpr Position default_pos{10.0, 0.0};
+        inline static const std::array default_polygon_vertex{Point{-10, -10},
+                                                              Point{-10, 10},
+                                                              Point{10, 10},
+                                                              Point{10, -10}};
 };
