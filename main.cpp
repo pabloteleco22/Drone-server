@@ -32,6 +32,7 @@ const float REASONABLE_ERROR{0.3f};
 const float PERCENTAGE_DRONES_REQUIRED{66.0f};
 const unsigned int MAX_ATTEMPTS{10};
 const float BASE_RETURN_TO_LAUNCH_ALTITUDE{10.0f};
+const double SEPARATION{5.0};
 
 //********** Operations **********//
 struct CheckSystemHealthArgs {
@@ -274,10 +275,6 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({latitude_deg.get_max(), longitude_deg.get_min()});
 	*/
 
-	//FixedFlag flag{Flag::Position{47.397953, 8.545955}}; // Encuentra para un rectángulo de 20x90
-	//FixedFlag flag{Flag::Position{47.397868, 8.545665}}; // Encuentra para un rectángulo de 20x90
-	FixedFlag flag{Flag::Position{100, 100}};
-	//FixedFlag flag{Flag::Position{47.397586, 8.5455620}};
 	geometry::CoordinateTransformation::GlobalCoordinate global_coordinate;
 	Polygon search_area;
 	/*
@@ -300,7 +297,6 @@ int main(int argc, char *argv[]) {
 	global_coordinate = coordinate_transformation.global_from_local({10, -10});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	*/
-	/*
 	global_coordinate = coordinate_transformation.global_from_local({-40, -40});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({-40, 30});
@@ -309,7 +305,6 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({30, -40});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
-	*/
 	/*
 	global_coordinate = coordinate_transformation.global_from_local({-40, 0});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
@@ -320,6 +315,7 @@ int main(int argc, char *argv[]) {
 	global_coordinate = coordinate_transformation.global_from_local({0, -40});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	*/
+	/*
 	global_coordinate = coordinate_transformation.global_from_local({-20, 10});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({-10, 30});
@@ -338,6 +334,14 @@ int main(int argc, char *argv[]) {
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
 	global_coordinate = coordinate_transformation.global_from_local({-30, 20});
 	search_area.push_back({global_coordinate.latitude_deg, global_coordinate.longitude_deg});
+	*/
+
+	//FixedFlag flag{Flag::Position{47.397953, 8.545955}}; // Encuentra para un rectángulo de 20x90
+	//FixedFlag flag{Flag::Position{47.397868, 8.545665}}; // Encuentra para un rectángulo de 20x90
+	//FixedFlag flag{Flag::Position{100, 100}};
+	FixedFlag flag{Flag::Position{47.397586, 8.5455620}};
+
+	//RandomFlagPoly flag{search_area};
 
 	logger->write(debug, "The flag is in:\n" + static_cast<string>(flag));
 
@@ -347,10 +351,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	geometry::CoordinateTransformation::GlobalCoordinate base{coordinate_transformation.global_from_local({0, 0})};
-	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({5, 0})};
+	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({SEPARATION, 0})};
 	logger->write(debug, "Separation: " + std::to_string(separation.latitude_deg - base.latitude_deg));
-	ParallelSweep mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
-	//SpiralSweepCenter mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
+	SpiralSweepEdge mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
 
 	PercentageCheck enough_systems{static_cast<float>(expected_systems), PERCENTAGE_DRONES_REQUIRED};
 
@@ -694,8 +697,8 @@ ProRetCod operation_set_mission_plan(OperationTools &operation, SetMissionPlanAr
 	ProRetCod ret{ok_code};
 
 	SetMissionPlanArgs::mut.lock();
-	std::this_thread::sleep_for(REFRESH_TIME); // Guarantees success
 	logger->write(info, "Uploading mission plan to system " + std::to_string(args->system_id));
+	std::this_thread::sleep_for(REFRESH_TIME); // Guarantees success
 	Mission::Result mission_result{args->mission->upload_mission(*(args->mission_plan))};
 	SetMissionPlanArgs::mut.unlock();
 
@@ -709,6 +712,7 @@ ProRetCod operation_set_mission_plan(OperationTools &operation, SetMissionPlanAr
 				std::to_string(args->system_id) + ": " + os.str() + ". Remaining attempts: " + std::to_string(attempts));
 
 		SetMissionPlanArgs::mut.lock();
+		logger->write(info, "Uploading mission plan to system " + std::to_string(args->system_id));
 		std::this_thread::sleep_for(REFRESH_TIME);
 		mission_result = args->mission->upload_mission(*(args->mission_plan));
 		SetMissionPlanArgs::mut.unlock();
