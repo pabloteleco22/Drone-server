@@ -119,7 +119,7 @@ RandomFlag::RandomFlag(const MaxMin &latitude_deg_interval, const MaxMin &longit
 RandomFlagPoly::RandomFlagPoly(const bool use_seed) {
     Polygon polygon;
     
-    for (Point vertex : default_polygon_vertex){
+    for (Point vertex : default_polygon_vertices){
         polygon.push_back(vertex);
     }
 

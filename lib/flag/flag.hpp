@@ -69,8 +69,8 @@ class RandomFlagPoly : public Flag {
         RandomFlagPoly(const bool use_seed=true);
         RandomFlagPoly(const Polygon polygon, const bool use_seed=true);
 
-        inline static const std::array default_polygon_vertex{Point{-10, -10},
-                                                              Point{-10, 10},
-                                                              Point{10, 10},
-                                                              Point{10, -10}};
+        inline static const std::array default_polygon_vertices{Point{-10, -10},
+                                                                Point{-10, 10},
+                                                                Point{10, 10},
+                                                                Point{10, -10}};
 };

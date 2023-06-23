@@ -112,7 +112,7 @@ TEST(RandomFlagMaxMinTest, CheckInterval) {
 TEST(RandomFlagPolyTest, CheckDefaultPosition) {
     Polygon poly;
 
-    for (Point vertex : RandomFlagPoly::default_polygon_vertex) {
+    for (Point vertex : RandomFlagPoly::default_polygon_vertices) {
         poly.push_back(vertex);
     }
 

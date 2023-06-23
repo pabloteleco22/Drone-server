@@ -21,10 +21,10 @@ class ProRetCod {
 
 			return *this;
 		}
-		bool operator==(const ProRetCod &other) {
+		bool operator==(const ProRetCod &other) const {
 			return ((code == other.code) and (message == other.message));
 		}
-		bool operator!=(const ProRetCod &other) {
+		bool operator!=(const ProRetCod &other) const {
 			return ((code != other.code) or (message != other.message));
 		}
 
