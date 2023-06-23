@@ -11,6 +11,9 @@ class ProRetCod {
 	string message;
 
 	protected:
+		/**
+		 * @brief To create an instance with an error code and a particular message
+		*/
 		ProRetCod(int code, string message) : code{code}, message{message} {}
 
 	public:
@@ -107,19 +110,49 @@ class CheckEnoughSystems {
 		float number_of_systems{0};
 
 	public:
+		/**
+		 * @param expected_systems: maximum number of systems expected
+		*/
 		CheckEnoughSystems(float expected_systems) : expected_systems{expected_systems} {}
 		virtual ~CheckEnoughSystems() {}
+
+		/**
+		 * @brief Indicates whether there are enough systems
+		*/
 		virtual bool exists_enough_systems() const = 0;
+
+		/**
+		 * @brief Generates a message in a string indicating the status of the test
+		*/
 		virtual string get_status() const = 0;
+
+		/**
+		 * @brief Appends a system to the systems counter
+		*/
 		virtual void append_system(float num=1);
+
+		/**
+		 * @brief Subtracts a system to the systems counter
+		*/
 		virtual void subtract_system(float num=1);
+
+		/**
+		 * @brief Gets the value of the systems counter
+		*/
 		virtual float get_number_of_systems() const;
 };
 
 struct PercentageCheck final : public CheckEnoughSystems {
 	PercentageCheck(const float expected_systems, const float percentage_drones_required=100.0f);
 
+	/**
+	 * @brief Indicates whether there are enough systems
+	*/
 	bool exists_enough_systems() const override;
+
+	/**
+	 * @brief Generates a message in a string indicating the status of the test
+	*/
 	string get_status() const override;
 
 	private:
