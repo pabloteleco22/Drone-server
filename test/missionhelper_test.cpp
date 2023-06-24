@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../lib/missionhelper/missionhelper.hpp"
+#include "../src/missionhelper/missionhelper.hpp"
 
 TEST(GoCenterTest, NewMissionThrowException) {
     Polygon poly;

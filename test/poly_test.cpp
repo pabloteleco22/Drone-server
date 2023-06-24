@@ -2,10 +2,7 @@
 
 #include <cmath>
 
-#include "../lib/poly/point.hpp"
-#include "../lib/poly/vector.hpp"
-#include "../lib/poly/line.hpp"
-#include "../lib/poly/polygon.hpp"
+#include "../src/poly/polygon.hpp"
 
 /* Point Tests */
 TEST(PointTest, DefaultPoint) {

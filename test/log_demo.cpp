@@ -1,4 +1,4 @@
-#include "../lib/log/log.hpp"
+#include "../src/log/log.hpp"
 
 #include <iostream>
 #include <fstream>

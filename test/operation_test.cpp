@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../lib/operation/operation.hpp"
+#include "../src/operation/operation.hpp"
 
 #include <string>
 
