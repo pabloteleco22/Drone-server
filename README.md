@@ -10,7 +10,7 @@ to divide the search area.
 
 ## Dependencies
 In order to compile this project it is necessary to have installed the MAVSDK library,
-available at https://github.com/mavlink/MAVSDK/releases, and the CMake tools.
+available at https://github.com/mavlink/MAVSDK/releases, the CMake tools and a C++ 20 compiler.
 
 ## Cloning this repository
 `git clone https://github.com/pabloteleco22/Drone-server.git`
