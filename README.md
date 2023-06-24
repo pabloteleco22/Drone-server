@@ -22,9 +22,9 @@ available at https://github.com/mavlink/MAVSDK/releases, the CMake tools and a C
 
 ## Tests
 There are more than 100 tests divided into several files within the
-[test](https://github.com/pabloteleco22/Drone-server/tree/master/test) and
-[flag_search/test](https://github.com/pabloteleco22/Drone-server/tree/master/flag_search/test) directory.
-To run them all you must execute the scritp run_test.bash which, at the end, will show a summary with the results.
+[test](test) and
+[flag_search/test](flag_search/test) directory.
+To run them all you must execute the script run_test.bash which, at the end, will show a summary with the results.
 `./run_tests.bash`
 
 ## Logging
