@@ -11,10 +11,8 @@
 #include "../src/operation/operation.hpp"
 #include "../src/errorcontrol/error_control.hpp"
 #include <thread>
-#include <barrier>
 #include <chrono>
 #include <future>
-#include <string>
 #include <sstream>
 #include <fstream>
 #include <mavsdk/geometry.h>
@@ -24,7 +22,7 @@ using namespace simple_logger;
 using std::vector;
 using std::shared_ptr;
 
-// Constants
+//********** Constants **********//
 const std::chrono::seconds MAX_WAITING_TIME{10};
 const float TAKEOFF_ALTITUDE{3.0f};
 const std::chrono::seconds REFRESH_TIME{1};
@@ -35,6 +33,7 @@ const float BASE_RETURN_TO_LAUNCH_ALTITUDE{10.0f};
 const double SEPARATION{5.0};
 
 //********** Operations **********//
+// Check the health of the system
 struct CheckSystemHealthArgs {
 	unsigned int system_id;
 	Telemetry *telemetry;
@@ -49,6 +48,7 @@ struct CheckSystemHealthArgs {
 };
 ProRetCod operation_check_system_health(OperationTools &operation, CheckSystemHealthArgs *operation_args);
 
+// Eliminates any mission on the drone
 struct ClearExistingMissionsArgs {
 	unsigned int system_id;
 	Mission *mission;
@@ -63,6 +63,7 @@ struct ClearExistingMissionsArgs {
 };
 ProRetCod operation_clear_existing_missions(OperationTools &operation, ClearExistingMissionsArgs *operation_args);
 
+// Orders the drones to return when the mission is completed
 struct ReturnToLaunchArgs {
 	unsigned int system_id;
 	Mission *mission;
@@ -77,6 +78,7 @@ struct ReturnToLaunchArgs {
 };
 ProRetCod operation_return_to_launch(OperationTools &operation, ReturnToLaunchArgs *operation_args);
 
+// Set the altitude that the drones should have on return
 struct ReturnToLaunchAltitudeArgs {
 	unsigned int system_id;
 	Action *action;
@@ -91,6 +93,7 @@ struct ReturnToLaunchAltitudeArgs {
 };
 ProRetCod operation_return_to_launch_altitude(OperationTools &operation, ReturnToLaunchAltitudeArgs *operation_args);
 
+// Starts the mission controller
 struct SetMissionControllerArgs {
 	unsigned int system_id;
 	Telemetry *telemetry;
@@ -115,6 +118,7 @@ struct SetMissionControllerArgs {
 };
 ProRetCod operation_set_mission_controller(OperationTools &operation, SetMissionControllerArgs *operation_args);
 
+// Makes the mission plan
 struct MakeMissionPlanArgs {
 	unsigned int system_id;
 	MissionHelper *mission_helper;
@@ -131,6 +135,7 @@ struct MakeMissionPlanArgs {
 };
 ProRetCod operation_make_mission_plan(OperationTools &operation, MakeMissionPlanArgs *operation_args);
 
+// Uploads mission plan to drones
 struct SetMissionPlanArgs {
 	unsigned int system_id;
 	Mission *mission;
@@ -147,6 +152,7 @@ struct SetMissionPlanArgs {
 mutex SetMissionPlanArgs::mut{};
 ProRetCod operation_set_mission_plan(OperationTools &operation, SetMissionPlanArgs *operation_args);
 
+// Arms the system
 struct ArmSystemsArgs {
 	unsigned int system_id;
 	Action *action;
@@ -158,6 +164,7 @@ struct ArmSystemsArgs {
 };
 ProRetCod operation_arm_systems(OperationTools &operation, ArmSystemsArgs *operation_args);
 
+// Starts the mission
 struct StartMissionArgs {
 	unsigned int system_id;
 	Mission *mission;
@@ -169,6 +176,7 @@ struct StartMissionArgs {
 };
 ProRetCod operation_start_mission(OperationTools &operation, StartMissionArgs *operation_args);
 
+// Shows the status of the mission and waits until the mission ends
 struct WaitUntilMissionEndsArgs {
 	unsigned int system_id;
 	Telemetry *telemetry;
@@ -184,6 +192,7 @@ struct WaitUntilMissionEndsArgs {
 ProRetCod operation_wait_until_mission_ends(OperationTools &operation, WaitUntilMissionEndsArgs *operation_args);
 //******************************************//
 
+//********** Functions **********//
 void establish_connections(int argc, char *argv[], Mavsdk &mavsdk);
 float wait_systems(Mavsdk &mavsdk, const vector<System>::size_type expected_systems,
 					CheckEnoughSystems *enough_systems);
@@ -192,6 +201,7 @@ void drone_handler(shared_ptr<System> system, Operation &operation,
 					MissionHelper *mission_helper, CheckEnoughSystems *enough_systems,
 					Flag *flag, double separation);
 
+//********** Logger global variables **********//
 Logger *logger;
 
 Critical critical;
@@ -207,6 +217,7 @@ int main(int argc, char *argv[]) {
 		exit(BadArgument::code);
 	}
 
+	// Logger configuration //
 	TimedLoggerDecoration logger_decoration;
 	UserCustomGreeter custom_greeter{[](const string &m) {
 		HourLoggerDecoration decoration;
@@ -235,17 +246,14 @@ int main(int argc, char *argv[]) {
 
 	logger = new BiLogger{&thread_standard_logger, &stream_loggers};
 
-	/*
+	// Logger filter
 	UserCustomFilter filter{[](const Level &level) {
 		return level > debug;
 	}};
 
 	logger->set_level_filter(&filter);
-	*/
 
-	// Constants
-	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
-
+	// Disabling the MAVSDK logger //
 	log::subscribe([](log::Level,   // message severity level
                           const std::string&, // message text
                           const std::string&,    // source file from which the message was sent
@@ -256,8 +264,12 @@ int main(int argc, char *argv[]) {
 		//return false;
 	});
 
+	// Constants //
+	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
+
 	Mavsdk mavsdk;
 
+	// Creating the flag and search area //
 	geometry::CoordinateTransformation coordinate_transformation{{47.3978409, 8.5456286}};
 
 	/*
@@ -350,12 +362,15 @@ int main(int argc, char *argv[]) {
 		logger->write(debug, "    " + static_cast<string>(v));
 	}
 
+	// Setting the missionhelper //
 	geometry::CoordinateTransformation::GlobalCoordinate base{coordinate_transformation.global_from_local({0, 0})};
 	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({SEPARATION, 0})};
 	logger->write(debug, "Separation: " + std::to_string(separation.latitude_deg - base.latitude_deg));
 	SpiralSweepEdge mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
 
+	// Setting the systems counter //
 	PercentageCheck enough_systems{static_cast<float>(expected_systems), PERCENTAGE_DRONES_REQUIRED};
+	//
 
 	establish_connections(argc, argv, mavsdk);
 	float final_systems{wait_systems(mavsdk, expected_systems, &enough_systems)};
@@ -369,7 +384,7 @@ int main(int argc, char *argv[]) {
 
 	vector<std::thread> threads_for_waiting{};
 
-	// Defining shared thread variables
+	// Defining the Operation object //
 	OperationTools operation_tools;
 	std::function<void()> sync_handler{
 		[&operation_tools]() {
@@ -390,6 +405,7 @@ int main(int argc, char *argv[]) {
 
 	Operation operation{operation_tools, &sync_point};
 
+	// Starting threads //
 	for (shared_ptr<System> system : mavsdk.systems()) {
 		threads_for_waiting.push_back(
 			std::thread{drone_handler, system, std::ref(operation),
@@ -398,6 +414,7 @@ int main(int argc, char *argv[]) {
 		);
 	}
 
+	// Waiting threads //
 	for (std::thread &th : threads_for_waiting) {
 		th.join();
 	}
@@ -415,11 +432,7 @@ void establish_connections(int argc, char *argv[], Mavsdk &mavsdk) {
 	vector<std::string> url_list{};
 
 	for (int i {1}; i < argc; ++i) {
-		// Identificación por el puerto
 		url_list.push_back("udp://:" + std::string {argv[i]});
-
-		// Identificación por la IP
-		//url_list.push_back("udp://" + std::string {argv[i]} + ":8090");
 	}
 
 	logger->write(info, "Establishing connection...");
