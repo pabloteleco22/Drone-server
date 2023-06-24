@@ -4,12 +4,12 @@
 #include <mavsdk/plugins/offboard/offboard.h>
 #include <mavsdk/log_callback.h>
 #include "src/flag/flag.hpp"
-#include "src/log/log.hpp"
+#include "../src/log/log.hpp"
 #include "src/poly/polygon.hpp"
 #include "src/missionhelper/missionhelper.hpp"
 #include "src/missioncontrol/missioncontrol.hpp"
-#include "src/operation/operation.hpp"
-#include "src/errorcontrol/error_control.hpp"
+#include "../src/operation/operation.hpp"
+#include "../src/errorcontrol/error_control.hpp"
 #include <thread>
 #include <barrier>
 #include <chrono>
@@ -339,9 +339,9 @@ int main(int argc, char *argv[]) {
 	//FixedFlag flag{Flag::Position{47.397953, 8.545955}}; // Encuentra para un rectángulo de 20x90
 	//FixedFlag flag{Flag::Position{47.397868, 8.545665}}; // Encuentra para un rectángulo de 20x90
 	//FixedFlag flag{Flag::Position{100, 100}};
-	FixedFlag flag{Flag::Position{47.397586, 8.5455620}};
+	//FixedFlag flag{Flag::Position{47.397586, 8.5455620}};
 
-	//RandomFlagPoly flag{search_area};
+	RandomFlagPoly flag{search_area};
 
 	logger->write(debug, "The flag is in:\n" + static_cast<string>(flag));
 

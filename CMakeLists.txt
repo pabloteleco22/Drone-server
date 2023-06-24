@@ -6,19 +6,20 @@ project(drone_server)
 # Specify at least C++11, better C++17
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set(CMAKE_CXX_COMPILER "/usr/bin/c++")
 
 # Enable strict handling of warnings
 #add_definitions("-Wall -Wextra -Werror")
 add_definitions("-Wall -Wextra")
 
-add_subdirectory(src/flag)
 add_subdirectory(src/log)
 add_subdirectory(src/missionhelper)
 add_subdirectory(src/missioncontrol)
 add_subdirectory(src/errorcontrol)
 add_subdirectory(src/operation)
-add_subdirectory(src/poly)
+add_subdirectory(flag_search/src/flag)
+add_subdirectory(flag_search/src/poly)
+add_subdirectory(flag_search/src/missionhelper)
+add_subdirectory(flag_search/src/missioncontrol)
 
 # Finds MAVSDK when installed system wide.
 find_package(MAVSDK REQUIRED)
@@ -26,7 +27,7 @@ find_package(MAVSDK REQUIRED)
 #------------------- MAIN -------------------#
 # Specify your app's executable name, and list of source files used to create it.
 add_executable(drone_server
-    main.cpp
+    flag_search/main.cpp
 )
 
 # Specify your app's executable name and a list of linked libraries
@@ -35,8 +36,8 @@ target_link_libraries(drone_server
     Flag
     Log
     Poly
-    MissionHelper
-    MissionControl
+    MissionHelperFlagSearch
+    MissionControlFlagSearch
     Operation
     ErrorControl
 )
@@ -55,7 +56,7 @@ enable_testing()
 
 ##------------------ Flag test ------------------##
 add_executable(flag_test
-    test/flag_test.cpp
+    flag_search/test/flag_test.cpp
 )
 
 target_link_libraries(flag_test
@@ -66,12 +67,12 @@ target_link_libraries(flag_test
 
 ##------------------ Mission helper test ------------------##
 add_executable(missionhelper_test
-    test/missionhelper_test.cpp
+    flag_search/test/missionhelper_test.cpp
 )
 
 target_link_libraries(missionhelper_test
     GTest::gtest_main
-    MissionHelper
+    MissionHelperFlagSearch
 )
 
 ##------------------ Operation test ------------------##
@@ -105,7 +106,7 @@ target_link_libraries(log_demo
 
 ##------------------ Poly test ------------------##
 add_executable(poly_test
-    test/poly_test.cpp
+    flag_search/test/poly_test.cpp
 )
 
 target_link_libraries(poly_test
