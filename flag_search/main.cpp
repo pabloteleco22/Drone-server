@@ -706,7 +706,7 @@ ProRetCod operation_make_mission_plan(OperationTools &operation, MakeMissionPlan
 	vector<Mission::MissionItem> mission_item_vector;
 
 	try {
-		args->mission_helper->new_mission(args->enough_systems->get_number_of_systems(), mission_item_vector, args->system_id);
+		args->mission_helper->new_mission(args->enough_systems->get_number_of_systems(), mission_item_vector);
 	} catch (const CannotMakeMission &e) {
 		logger->write(critical, "System " + std::to_string(args->system_id) + " cannot make a mission: " + e.what());
 
