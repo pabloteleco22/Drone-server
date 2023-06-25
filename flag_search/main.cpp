@@ -1,17 +1,21 @@
-/** Copyright (C) 2023  Pablo López Sedeño
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+/**
+ * The MIT License (MIT)
+ * Copyright (c) 2023 Pablo López Sedeño
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the “Software”), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
 */
 
 #include <mavsdk/mavsdk.h>
@@ -368,8 +372,9 @@ int main(int argc, char *argv[]) {
 	//FixedFlag flag{Flag::Position{47.397868, 8.545665}}; // Encuentra para un rectángulo de 20x90
 	//FixedFlag flag{Flag::Position{100, 100}};
 	//FixedFlag flag{Flag::Position{47.397586, 8.5455620}};
+	FixedFlag flag{Flag::Position{47.397637, 8.545618}};
 
-	RandomFlagPoly flag{search_area};
+	//RandomFlagPoly flag{search_area};
 
 	logger->write(debug, "The flag is in:\n" + static_cast<string>(flag));
 
@@ -382,7 +387,7 @@ int main(int argc, char *argv[]) {
 	geometry::CoordinateTransformation::GlobalCoordinate base{coordinate_transformation.global_from_local({0, 0})};
 	geometry::CoordinateTransformation::GlobalCoordinate separation{coordinate_transformation.global_from_local({SEPARATION, 0})};
 	logger->write(debug, "Separation: " + std::to_string(separation.latitude_deg - base.latitude_deg));
-	SpiralSweepEdge mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
+	ParallelSweep mission_helper{search_area, separation.latitude_deg - base.latitude_deg};
 
 	// Setting the systems counter //
 	PercentageCheck enough_systems{static_cast<float>(expected_systems), PERCENTAGE_DRONES_REQUIRED};
