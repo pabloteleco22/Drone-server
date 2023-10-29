@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-# Specify your project's name
+# Project's name
 project(drone_server)
 
 # Specify at least C++11, better C++17
