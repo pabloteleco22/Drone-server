@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #add_definitions("-Wall -Wextra -Werror")
 add_definitions("-Wall -Wextra")
 
-add_subdirectory(src/log)
+add_subdirectory(src/Logger)
 add_subdirectory(src/missionhelper)
 add_subdirectory(src/missioncontrol)
 add_subdirectory(src/errorcontrol)
@@ -34,7 +34,7 @@ add_executable(drone_server
 target_link_libraries(drone_server
     MAVSDK::mavsdk             #All apps link against mavsdk library
     Flag
-    Log
+    Logger
     Poly
     MissionHelperFlagSearch
     MissionControlFlagSearch
@@ -85,25 +85,6 @@ target_link_libraries(operation_test
     Operation
 )
 
-##------------------ Log test ------------------##
-add_executable(log_test
-    test/log_test.cpp
-)
-
-target_link_libraries(log_test
-    GTest::gtest_main
-    Log
-)
-
-##------------------ Log demo ------------------##
-add_executable(log_demo
-    test/log_demo.cpp
-)
-
-target_link_libraries(log_demo
-    Log
-)
-
 ##------------------ Poly test ------------------##
 add_executable(poly_test
     flag_search/test/poly_test.cpp
@@ -116,6 +97,5 @@ target_link_libraries(poly_test
 
 include(GoogleTest)
 gtest_discover_tests(flag_test)
-gtest_discover_tests(log_test)
 gtest_discover_tests(missionhelper_test)
 gtest_discover_tests(poly_test)
