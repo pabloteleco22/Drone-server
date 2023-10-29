@@ -231,12 +231,6 @@ Info info;
 Debug debug;
 
 int main(int argc, char *argv[]) {
-	if (argc < 2) {
-		logger->write(error, "Use: " + string(argv[0]) + " <port1> <port2> ...");
-
-		exit(BadArgument::code);
-	}
-
 	// Logger configuration //
 	TimedLoggerDecoration logger_decoration;
 	UserCustomGreeter custom_greeter{[](const string &m) {
@@ -283,6 +277,13 @@ int main(int argc, char *argv[]) {
 		return true;
 		//return false;
 	});
+
+	if (argc < 2) {
+		logger->write(error, "Use: " + string(argv[0]) + " <port1> <port2> ...");
+
+		exit(BadArgument::code);
+	}
+
 
 	// Constants //
 	const vector<System>::size_type expected_systems{static_cast<unsigned long>(argc - 1)};
