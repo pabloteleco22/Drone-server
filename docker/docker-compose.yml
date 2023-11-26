@@ -1,0 +1,18 @@
+version: "1.0"
+services:
+  mavsdk:
+    build: 
+      context: .
+      args:
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
+    image: ubuntu-mavsdk
+    command: ["/bin/bash"]
+    container_name: mavsdk
+    volumes:
+      - ../:/server
+    ports:
+      - "14556:14556"
+      - "14557:14557"
+    stdin_open: true
+    tty: true

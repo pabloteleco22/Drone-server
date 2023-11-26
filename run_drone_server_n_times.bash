@@ -18,17 +18,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+if ! [[ "$1" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: First argument must be a number"
+    exit
+fi
+
 i=0
 cont=0
 while test $cont -eq 0 -a $i -lt 10; do
     i=$(($i+1))
-    notify-send --app-name "Mission" "New mission $i" -u critical
+    notify-send --app-name "Mission" "New mission $i" -u critical 2> /dev/null
     ./build/drone_server 14540 14541 14542 14543 14544
     cont=$?
 done
 
 if test $cont -eq 0; then
-    notify-send --app-name "Mission" "All missions complete" -u critical
+    notify-send --app-name "Mission" "All missions complete" -u critical 2> /dev/null
 else
-    notify-send --app-name "Mission" "There was an error" -u critical
+    notify-send --app-name "Mission" "There was an error" -u critical 2> /dev/null
 fi

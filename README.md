@@ -25,3 +25,8 @@ To run them all you must execute the script run_test.bash which, at the end, wil
 
 ## Logging
 To save the logging messages when executing the search application you will need to create a logs directory where you call the runnable.
+
+## Using Docker
+You can build and execute this project on a docker container. To do this you have to install *docker* and *docker-compose* and execute the following command from the project root `HOST_UID=$(id -u) HOST_GID=$(id -g) docker-compose -f docker/docker-compose.yml up -d`. Then it will create a docker image and then a docker container.
+
+To use the project in docker you can run `make docker-config-build` to make the build directory, `make docker-build` to build the project and `make docker-run ports="14540 14541 ..."` to run the application.

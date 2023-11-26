@@ -236,7 +236,7 @@ int main(int argc, char *argv[]) {
 	UserCustomGreeter custom_greeter{[](const string &m) {
 		HourLoggerDecoration decoration;
 
-		return "[" + decoration.get_decoration() + "Greetings] " + m;
+		return "[" + decoration.get_decoration() + " | Greetings] " + m;
 	}};
 
 	StandardLoggerBuilder standard_logger_builder;
