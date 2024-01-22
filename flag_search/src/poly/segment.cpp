@@ -36,7 +36,7 @@ Segment::Segment(const Line &l) {
 }
 
 Segment::Segment(const Point &start, const Point &end) {
-    l = Line{start, end};
+    l = Line{ start, end };
 }
 
 /**
@@ -72,7 +72,7 @@ double Segment::square_length() const {
  * the new end point and vice versa
 */
 Segment Segment::reverse() const {
-    return Segment{end, start};
+    return Segment{ end, start };
 }
 
 inline bool inside(double v, double min, double max) {
@@ -96,10 +96,10 @@ inline double maximum(double a, double b) {
  * the start point
 */
 Point Segment::get_point_along(double t) const {
-    Point p{l.get_point_along(t)};
-    Point min{minimum(start.x, end.x), minimum(start.y, end.y)};
-    Point max{maximum(start.x, end.x), maximum(start.y, end.y)};
-    
+    Point p{ l.get_point_along(t) };
+    Point min{ minimum(start.x, end.x), minimum(start.y, end.y) };
+    Point max{ maximum(start.x, end.x), maximum(start.y, end.y) };
+
     if (!inside(p.x, min.x, max.x) or (!inside(p.y, min.y, max.y))) {
         p = get_nearest_point(p);
     }
@@ -120,8 +120,8 @@ double Segment::get_distance(const Point &point) const {
  * and end points
 */
 Point Segment::get_nearest_point(const Point &point) const {
-    Vector dir{l.b, -l.a};
-    double u{Vector{point - start}.dot(dir) / dir.square_length()};
+    Vector dir{ l.b, -l.a };
+    double u{ Vector{point - start}.dot(dir) / dir.square_length() };
     if (u < 0)
         return start;
     else if (u > 1)
@@ -134,7 +134,7 @@ Point Segment::get_nearest_point(const Point &point) const {
  * @brief Returns if the point is over, under or in the line
 */
 PointSide Segment::point_side(const Point &point) const {
-    double s{l.a * (point.x - start.x) + l.b * (point.y - start.y)};
+    double s{ l.a * (point.x - start.x) + l.b * (point.y - start.y) };
     if (s > 0) {
         return PointSide::Above;
     } else if (s < 0) {
@@ -147,17 +147,17 @@ PointSide Segment::point_side(const Point &point) const {
 /**
  * @brief Returns whether the line and the segment intersect and
  * the point of intersection between them
- * 
- * @param 
+ *
+ * @param
  * line: The segment, not the line.
  *
  * @param
  * result: The intersection point.
- * 
+ *
  * @return If the line and the segment intersect
 */
 bool Segment::cross_line(const Line &line, Point &result) const {
-    double d{det(line.a, line.b, l.a, l.b)};
+    double d{ det(line.a, line.b, l.a, l.b) };
     if (d == 0)
         return false;
 
@@ -165,20 +165,20 @@ bool Segment::cross_line(const Line &line, Point &result) const {
     result.y = -det(line.a, line.c, l.a, l.c) / d;
 
     return inside(result.x, minimum(start.x, end.x), maximum(start.x, end.x)) &&
-            inside(result.y, minimum(start.y, end.y), maximum(start.y, end.y));
+        inside(result.y, minimum(start.y, end.y), maximum(start.y, end.y));
 }
 
 /**
  * @brief Returns whether the thw segments intersect and
  * the point of intersection between them
- * 
+ *
  * @param
  * result: The intersection point.
- * 
+ *
  * @return If the line and the segment intersect
 */
 bool Segment::cross_line(const Segment &seg, Point &result) const {
-    double d{det(l.a, l.b, seg.l.a, seg.l.b)};
+    double d{ det(l.a, l.b, seg.l.a, seg.l.b) };
     if (d == 0)
         return false;
 
@@ -186,9 +186,9 @@ bool Segment::cross_line(const Segment &seg, Point &result) const {
     result.y = -det(l.a, l.c, seg.l.a, seg.l.c) / d;
 
     return inside(result.x, minimum(start.x, end.x), maximum(start.x, end.x)) &&
-           inside(result.y, minimum(start.y, end.y), maximum(start.y, end.y)) &&
-           inside(result.x, minimum(seg.start.x, seg.end.x), maximum(seg.start.x, seg.end.x)) &&
-           inside(result.y, minimum(seg.start.y, seg.end.y), maximum(seg.start.y, seg.end.y));
+        inside(result.y, minimum(start.y, end.y), maximum(start.y, end.y)) &&
+        inside(result.x, minimum(seg.start.x, seg.end.x), maximum(seg.start.x, seg.end.x)) &&
+        inside(result.y, minimum(seg.start.y, seg.end.y), maximum(seg.start.y, seg.end.y));
 }
 
 bool Segment::operator==(const Segment &other) const {
@@ -208,14 +208,14 @@ Line Segment::get_bisector(const Segment &seg1, const Segment &seg2) {
     if (seg1 == seg2) {
         return seg1.make_line();
     } else {
-        double q1{sqrt(seg1.l.a * seg1.l.a + seg1.l.b * seg1.l.b)};
-        double q2{sqrt(seg2.l.a * seg2.l.a + seg2.l.b * seg2.l.b)};
+        double q1{ sqrt(seg1.l.a * seg1.l.a + seg1.l.b * seg1.l.b) };
+        double q2{ sqrt(seg2.l.a * seg2.l.a + seg2.l.b * seg2.l.b) };
 
-        double a{seg1.l.a / q1 - seg2.l.a / q2};
-        double b{seg1.l.b / q1 - seg2.l.b / q2};
-        double c{seg1.l.c / q1 - seg2.l.c / q2};
+        double a{ seg1.l.a / q1 - seg2.l.a / q2 };
+        double b{ seg1.l.b / q1 - seg2.l.b / q2 };
+        double c{ seg1.l.c / q1 - seg2.l.c / q2 };
 
-        return Line{a, b, c};
+        return Line{ a, b, c };
     }
 }
 
@@ -232,5 +232,5 @@ std::ostream &operator<<(std::ostream &out, const Segment &s) {
 }
 
 Line Segment::make_line() const {
-    return Line{l.a, l.b, l.c};
+    return Line{ l.a, l.b, l.c };
 }

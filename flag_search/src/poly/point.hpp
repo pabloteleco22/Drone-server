@@ -47,7 +47,7 @@ struct Point {
     double distance(const Point &p) const;
     double square_distance(const Point &p) const;
     Point abs() const;
-    friend std::ostream& operator<<(std::ostream &out, const Point &v);
+    friend std::ostream &operator<<(std::ostream &out, const Point &v);
 };
 
 using Points = std::vector<Point>;

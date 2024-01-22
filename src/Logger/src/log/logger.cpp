@@ -12,7 +12,7 @@ Logger::LoggerStreamResponse::LoggerStreamResponse(const Logger *logger, const L
     this->level = level;
 }
 
-void Logger::LoggerStreamResponse::operator<<(std::ostream& (*)(std::ostream&)) {
+void Logger::LoggerStreamResponse::operator<<(std::ostream &(*)(std::ostream &)) {
     flush();
 }
 
@@ -47,7 +47,7 @@ StreamLogger::StreamLogger(const StreamLogger &other) : WriterLogger(other) {
 }
 
 StreamLogger::StreamLogger(std::ostream *stream, const LoggerDecoration *decoration, const Greeter *greeter, const string &greeting_message) :
-                WriterLogger(decoration) {
+    WriterLogger(decoration) {
     this->stream = stream;
 
     greetings(greeter->greetings(greeting_message));
@@ -55,8 +55,8 @@ StreamLogger::StreamLogger(std::ostream *stream, const LoggerDecoration *decorat
 
 void StreamLogger::write(const Level &level, const string &message) const {
     if (level_filter->filter(level)) {
-        string decoration_str{decoration->get_decoration()};
-        
+        string decoration_str{ decoration->get_decoration() };
+
         if (decoration_str == "") {
             (*stream) << "["
                 << level.get_level_name() << "] " << message << endl;
@@ -72,19 +72,19 @@ void StreamLogger::greetings(const string &g) const {
     (*stream) << g << endl;
 }
 
-const string StreamLogger::default_greeting_message{"Starting stream logger"};
+const string StreamLogger::default_greeting_message{ "Starting stream logger" };
 
 /** StandardLogger **/
 StandardLogger::StandardLogger(const StandardLogger &other) : StreamLogger(other) {}
 
 StandardLogger::StandardLogger(const LoggerDecoration *decoration, const Greeter *greeter, const string &greeting_message) :
-            StreamLogger(&cout, decoration, greeter, greeting_message) {}
+    StreamLogger(&cout, decoration, greeter, greeting_message) {}
 
 void StandardLogger::write(const Level &level, const string &message) const {
     if (level_filter->filter(level)) {
-        string decoration_str{decoration->get_decoration()};
+        string decoration_str{ decoration->get_decoration() };
 
-        
+
         if (decoration_str == "") {
             (*stream) << level.get_color() << "["
                 << level.get_level_name() << "]\033[0m " << message << endl;
@@ -96,7 +96,7 @@ void StandardLogger::write(const Level &level, const string &message) const {
     }
 }
 
-const string StandardLogger::default_greeting_message{"Starting standard logger"};
+const string StandardLogger::default_greeting_message{ "Starting standard logger" };
 
 /** ThreadLogger **/
 ThreadLogger::ThreadLogger(Logger *other) {

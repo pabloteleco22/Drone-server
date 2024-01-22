@@ -25,7 +25,7 @@ PolySplitMission::PolySplitMission(Polygon area) {
 }
 
 void PolySplitMission::get_polygon_of_interest(const unsigned int system_id, const unsigned int number_of_systems, Polygon *polygon_of_interest) const {
-    const double precision{1E6};
+    const double precision{ 1E6 };
     Polygon helper = area;
     for (size_t i = 0; i < helper.size(); ++i) {
         helper[i] *= precision;
@@ -33,33 +33,33 @@ void PolySplitMission::get_polygon_of_interest(const unsigned int system_id, con
         helper[i].y = round(helper[i].y);
     }
 
-    double partial_area{helper.count_square() / static_cast<double>(number_of_systems)};
+    double partial_area{ helper.count_square() / static_cast<double>(number_of_systems) };
 
     if (partial_area <= 0) {
-        throw CannotMakeMission{"The required area is zero or less"};
+        throw CannotMakeMission{ "The required area is zero or less" };
     }
 
     if (system_id <= 0) {
-        throw CannotMakeMission{"The system ID must be greater than 0"};
+        throw CannotMakeMission{ "The system ID must be greater than 0" };
     }
 
     if (system_id > number_of_systems) {
-        throw CannotMakeMission{"The system ID must be less than or equal to the number of systems"};
+        throw CannotMakeMission{ "The system ID must be less than or equal to the number of systems" };
     }
 
     Polygon poly1;
     Polygon poly2;
     Polygon *polygon_of_interest_tmp = &poly1;
-    Polygon *discarded_area{&poly2};
+    Polygon *discarded_area{ &poly2 };
     Segment cut_line;
 
-    const unsigned int n_iterations{(system_id < number_of_systems) ? system_id : (number_of_systems - 1)};
+    const unsigned int n_iterations{ (system_id < number_of_systems) ? system_id : (number_of_systems - 1) };
 
     for (unsigned int i = 0; i < n_iterations; ++i) {
         try {
             helper.split(partial_area, poly1, poly2, cut_line);
         } catch (const Polygon::CannotSplitException &e) {
-            throw CannotMakeMission(std::string{"Cannot split the required area. "} + e.what());
+            throw CannotMakeMission(std::string{ "Cannot split the required area. " } + e.what());
         }
 
         if (poly1.count_square() - partial_area < poly2.count_square() - partial_area) {
@@ -76,7 +76,7 @@ void PolySplitMission::get_polygon_of_interest(const unsigned int system_id, con
     if (number_of_systems == 1) {
         *polygon_of_interest_tmp = area;
     } else {
-        if (system_id == number_of_systems) 
+        if (system_id == number_of_systems)
             polygon_of_interest_tmp = discarded_area;
 
         for (size_t i = 0; i < polygon_of_interest_tmp->size(); ++i) {
@@ -92,8 +92,8 @@ void GoCenter::new_mission(const unsigned int number_of_systems, std::vector<Mis
 
     get_polygon_of_interest(system_id, number_of_systems, &polygon_of_interest);
 
-    float altitude{static_cast<float>(system_id)};
-    const float altitude_offset{10.0f};
+    float altitude{ static_cast<float>(system_id) };
+    const float altitude_offset{ 10.0f };
     altitude += altitude_offset;
 
     mission.push_back(MissionHelper::make_mission_item(
@@ -108,7 +108,7 @@ void GoCenter::new_mission(const unsigned int number_of_systems, std::vector<Mis
     );
 }
 
-unsigned int SpiralSweepCenter::auto_system_id{1};
+unsigned int SpiralSweepCenter::auto_system_id{ 1 };
 std::mutex SpiralSweepCenter::mut{};
 
 void SpiralSweepCenter::new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id) const {
@@ -124,23 +124,23 @@ void SpiralSweepCenter::new_mission(const unsigned int number_of_systems, std::v
 
     get_polygon_of_interest(system_id, number_of_systems, &polygon_of_interest);
 
-    float altitude{static_cast<float>(system_id)};
-    const float altitude_offset{10.0f};
+    float altitude{ static_cast<float>(system_id) };
+    const float altitude_offset{ 10.0f };
     altitude += altitude_offset;
 
-    const Point center{polygon_of_interest.find_center()};
+    const Point center{ polygon_of_interest.find_center() };
 
     std::vector<Segment> segment_vector{};
 
     for (Point p : polygon_of_interest.get_vertices()) {
-        segment_vector.push_back(Segment{center, p});
+        segment_vector.push_back(Segment{ center, p });
     }
 
-    auto it{segment_vector.begin()};
+    auto it{ segment_vector.begin() };
 
     while (!segment_vector.empty()) {
-        Point p{it->get_point_along(separation)};
-        Point end{it->get_end()};
+        Point p{ it->get_point_along(separation) };
+        Point end{ it->get_end() };
 
         if (p != end) {
             mission.push_back(MissionHelper::make_mission_item(
@@ -154,7 +154,7 @@ void SpiralSweepCenter::new_mission(const unsigned int number_of_systems, std::v
                 Mission::MissionItem::CameraAction::None)
             );
 
-            *it = Segment{p, end};
+            *it = Segment{ p, end };
             ++it;
         } else {
             segment_vector.erase(it);
@@ -178,7 +178,7 @@ void SpiralSweepCenter::new_mission(const unsigned int number_of_systems, std::v
     );
 }
 
-unsigned int SpiralSweepEdge::auto_system_id{1};
+unsigned int SpiralSweepEdge::auto_system_id{ 1 };
 std::mutex SpiralSweepEdge::mut{};
 
 void SpiralSweepEdge::new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id) const {
@@ -194,22 +194,22 @@ void SpiralSweepEdge::new_mission(const unsigned int number_of_systems, std::vec
 
     get_polygon_of_interest(system_id, number_of_systems, &polygon_of_interest);
 
-    float altitude{static_cast<float>(system_id)};
-    const float altitude_offset{10.0f};
+    float altitude{ static_cast<float>(system_id) };
+    const float altitude_offset{ 10.0f };
     altitude += altitude_offset;
 
-    const Point center{polygon_of_interest.find_center()};
+    const Point center{ polygon_of_interest.find_center() };
 
     std::vector<Segment> segment_vector{};
 
     for (Point p : polygon_of_interest.get_vertices()) {
-        segment_vector.push_back(Segment{p, center});
+        segment_vector.push_back(Segment{ p, center });
     }
 
-    auto it{segment_vector.begin()};
+    auto it{ segment_vector.begin() };
 
     while (!segment_vector.empty()) {
-        Point p{it->get_point_along(separation)};
+        Point p{ it->get_point_along(separation) };
 
         if (p != center) {
             mission.push_back(MissionHelper::make_mission_item(
@@ -223,7 +223,7 @@ void SpiralSweepEdge::new_mission(const unsigned int number_of_systems, std::vec
                 Mission::MissionItem::CameraAction::None)
             );
 
-            *it = Segment{p, center};
+            *it = Segment{ p, center };
             ++it;
         } else {
             segment_vector.erase(it);
@@ -234,7 +234,7 @@ void SpiralSweepEdge::new_mission(const unsigned int number_of_systems, std::vec
     }
 }
 
-unsigned int ParallelSweep::auto_system_id{1};
+unsigned int ParallelSweep::auto_system_id{ 1 };
 std::mutex ParallelSweep::mut{};
 
 void ParallelSweep::new_mission(const unsigned int number_of_systems, std::vector<Mission::MissionItem> &mission, unsigned int system_id) const {
@@ -250,13 +250,13 @@ void ParallelSweep::new_mission(const unsigned int number_of_systems, std::vecto
 
     get_polygon_of_interest(system_id, number_of_systems, &polygon_of_interest);
 
-    float altitude{static_cast<float>(system_id)};
-    const float altitude_offset{10.0f};
+    float altitude{ static_cast<float>(system_id) };
+    const float altitude_offset{ 10.0f };
     altitude += altitude_offset;
 
-    const Vector dir{polygon_of_interest[1] - polygon_of_interest[0]};
-    const Vector norm{dir.norm().unit() * separation};
-    const Line base_line{polygon_of_interest[0], dir};
+    const Vector dir{ polygon_of_interest[1] - polygon_of_interest[0] };
+    const Vector norm{ dir.norm().unit() * separation };
+    const Line base_line{ polygon_of_interest[0], dir };
     std::function<void(const bool, const Vector)> sweep{
         [base_line, dir, polygon_of_interest, altitude, *this, &mission](const bool first, const Vector norm) {
             Line tmp{base_line};
@@ -275,75 +275,75 @@ void ParallelSweep::new_mission(const unsigned int number_of_systems, std::vecto
                 if (cross_points.size() == 0) {
                     cont = false;
                 } else if (cross_points.size() == 1) {
-                    mission.push_back(MissionHelper::make_mission_item(
-                        cross_points[0].x,
-                        cross_points[0].y,
-                        altitude,
-                        5.0f,
-                        false,
-                        20.0f,
-                        60.0f,
-                        Mission::MissionItem::CameraAction::None)
-                    );
-                } else {
-                    double max{0};
-                    double min{0};
+  mission.push_back(MissionHelper::make_mission_item(
+      cross_points[0].x,
+      cross_points[0].y,
+      altitude,
+      5.0f,
+      false,
+      20.0f,
+      60.0f,
+      Mission::MissionItem::CameraAction::None)
+  );
+} else {
+ double max{0};
+ double min{0};
 
-                    for (unsigned int i = 1; i < cross_points.size(); ++i){
-                        if ((cross_points[max].y < cross_points[i].y) or
-                                ((cross_points[max].y == cross_points[i].y) and
-                                (cross_points[max].x < cross_points[i].x))
-                            ) {
-                            max = i;
-                        }
+ for (unsigned int i = 1; i < cross_points.size(); ++i) {
+     if ((cross_points[max].y < cross_points[i].y) or
+             ((cross_points[max].y == cross_points[i].y) and
+             (cross_points[max].x < cross_points[i].x))
+         ) {
+         max = i;
+     }
 
-                        if ((cross_points[min].y > cross_points[i].y) or
-                                ((cross_points[min].y == cross_points[i].y) and
-                                (cross_points[min].x > cross_points[i].x))
-                            ) {
-                            min = i;
-                        }
-                    }
+     if ((cross_points[min].y > cross_points[i].y) or
+             ((cross_points[min].y == cross_points[i].y) and
+             (cross_points[min].x > cross_points[i].x))
+         ) {
+         min = i;
+     }
+ }
 
-                    Point first{cross_points[alt ? max : min]};
-                    Point second{cross_points[alt ? min : max]};
+ Point first{cross_points[alt ? max : min]};
+ Point second{cross_points[alt ? min : max]};
 
-                    Vector side{Vector{second - first}.unit()};
-                    
-                    double distance{first.distance(second)};
-                    if (distance > 2 * separation) {
-                        first = first + (side * separation);
-                        second = second + ((-side) * separation);
-                    } else if (distance > separation) {
-                        first = first + (side * separation);
-                    }
+ Vector side{Vector{second - first}.unit()};
 
-                    mission.push_back(MissionHelper::make_mission_item(
-                        first.x,
-                        first.y,
-                        altitude,
-                        5.0f,
-                        false,
-                        20.0f,
-                        60.0f,
-                        Mission::MissionItem::CameraAction::None)
-                    );
+ double distance{first.distance(second)};
+ if (distance > 2 * separation) {
+     first = first + (side * separation);
+     second = second + ((-side) * separation);
+ } else if (distance > separation) {
+ first = first + (side * separation);
+}
 
-                    mission.push_back(MissionHelper::make_mission_item(
-                        second.x,
-                        second.y,
-                        altitude,
-                        5.0f,
-                        false,
-                        20.0f,
-                        60.0f,
-                        Mission::MissionItem::CameraAction::None)
-                    );
+mission.push_back(MissionHelper::make_mission_item(
+    first.x,
+    first.y,
+    altitude,
+    5.0f,
+    false,
+    20.0f,
+    60.0f,
+    Mission::MissionItem::CameraAction::None)
+);
 
-                    alt = not alt;
-                }
-            } while (cont);
-        }
+mission.push_back(MissionHelper::make_mission_item(
+    second.x,
+    second.y,
+    altitude,
+    5.0f,
+    false,
+    20.0f,
+    60.0f,
+    Mission::MissionItem::CameraAction::None)
+);
+
+alt = not alt;
+}
+} while (cont);
+}
     };
 
     sweep(true, norm);
@@ -354,13 +354,13 @@ void ParallelSweep::new_mission(const unsigned int number_of_systems, std::vecto
 }
 
 std::vector<Point> ParallelSweep::cross_point(const Polygon &poly, const Line &l) const {
-    size_t len{poly.size()};
+    size_t len{ poly.size() };
     std::vector<Point> cross_points{};
     Point p;
     bool success;
 
     for (size_t i = 0; i < len; ++i) {
-        Segment s{poly[i], poly[(i + 1) % len]};
+        Segment s{ poly[i], poly[(i + 1) % len] };
 
         success = s.cross_line(l, p);
 

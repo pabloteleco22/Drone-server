@@ -4,7 +4,7 @@ using namespace simple_logger;
 
 /** StandardLoggerBuilder **/
 Logger *StandardLoggerBuilder::build() {
-    return new StandardLogger{decoration, greeter, greeting_string};
+    return new StandardLogger{ decoration, greeter, greeting_string };
 }
 
 StandardLoggerBuilder &StandardLoggerBuilder::set_decoration(const LoggerDecoration *decoration) {
@@ -38,7 +38,7 @@ StreamLoggerBuilder::StreamLoggerBuilder(std::ostream *stream) {
 }
 
 Logger *StreamLoggerBuilder::build() {
-    return new StreamLogger{stream, decoration, greeter, greeting_string};
+    return new StreamLogger{ stream, decoration, greeter, greeting_string };
 }
 
 StreamLoggerBuilder &StreamLoggerBuilder::set_stream(std::ostream *stream) {

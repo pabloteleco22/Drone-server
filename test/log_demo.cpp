@@ -44,7 +44,7 @@ int main() {
     cout << "Standard logger" << endl;
     StandardLoggerBuilder standard_logger_builder;
 
-    Logger *standard_logger{standard_logger_builder.build()};
+    Logger *standard_logger{ standard_logger_builder.build() };
     cout << "All levels" << endl;
     standard_logger->write(debug, "Debug message");
     standard_logger->write(info, "Info message");
@@ -66,7 +66,7 @@ int main() {
     cout << endl << "Standard stream logger" << endl;
     StreamLoggerBuilder stream_logger_builder(&cout);
 
-    Logger *standard_stream_logger{stream_logger_builder.build()};
+    Logger *standard_stream_logger{ stream_logger_builder.build() };
     cout << "All levels" << endl;
     standard_stream_logger->write(debug, "Debug message");
     standard_stream_logger->write(info, "Info message");
@@ -85,11 +85,11 @@ int main() {
 
     delete standard_stream_logger;
 
-    std::ofstream log_demo_stream{"logs/test/log_demo.log", std::ios::out};
+    std::ofstream log_demo_stream{ "logs/test/log_demo.log", std::ios::out };
     stream_logger_builder.reset_config()
-                         .set_stream(&log_demo_stream);
+        .set_stream(&log_demo_stream);
 
-    Logger *stream_logger{stream_logger_builder.build()};
+    Logger *stream_logger{ stream_logger_builder.build() };
     stream_logger->write(info, "All levels");
     stream_logger->write(debug, "Debug message");
     stream_logger->write(info, "Info message");
@@ -111,9 +111,9 @@ int main() {
     cout << endl << "Thread standard logger" << endl;
     TimedLoggerDecoration timed_logger_decoration;
     standard_logger_builder.reset_config()
-                           .set_decoration(&timed_logger_decoration);
-    Logger *thread_standard_logger{standard_logger_builder.build()};
-    ThreadLogger thread_logger{thread_standard_logger};
+        .set_decoration(&timed_logger_decoration);
+    Logger *thread_standard_logger{ standard_logger_builder.build() };
+    ThreadLogger thread_logger{ thread_standard_logger };
 
     cout << "All levels" << endl;
     thread_logger.write(debug, "Debug message");
@@ -134,12 +134,12 @@ int main() {
     delete thread_standard_logger;
 
 
-    std::ofstream thread_log_demo_stream{"logs/test/thread_log_demo.log", std::ios::out};
+    std::ofstream thread_log_demo_stream{ "logs/test/thread_log_demo.log", std::ios::out };
     stream_logger_builder.reset_config()
-                         .set_decoration(&timed_logger_decoration)
-                         .set_stream(&thread_log_demo_stream);
+        .set_decoration(&timed_logger_decoration)
+        .set_stream(&thread_log_demo_stream);
 
-    Logger *thread_stream_logger{stream_logger_builder.build()};
+    Logger *thread_stream_logger{ stream_logger_builder.build() };
     thread_logger.set_logger(thread_stream_logger);
 
     thread_logger.write(info, "All levels");
@@ -163,31 +163,31 @@ int main() {
 
     cout << endl << "Bi logger" << endl;
 
-    UserCustomGreeter custom_greeter{[](const string &m) {
+    UserCustomGreeter custom_greeter{ [](const string &m) {
         HourLoggerDecoration decoration;
 
         return "\033[1;104m[" + decoration.get_decoration() + "Greetings]\033[0m " + m;
-    }};
+    } };
 
     HourLoggerDecoration logger_decoration;
 
     standard_logger_builder.reset_config()
-                           .set_decoration(&logger_decoration)
-                           .set_greeter(&custom_greeter)
-                           .set_greeting_string("Starting thread standard logger");
+        .set_decoration(&logger_decoration)
+        .set_greeter(&custom_greeter)
+        .set_greeting_string("Starting thread standard logger");
 
-    std::ofstream bilog_demo_stream{"logs/test/bilog_demo.log", std::ios::out};
+    std::ofstream bilog_demo_stream{ "logs/test/bilog_demo.log", std::ios::out };
     stream_logger_builder.reset_config()
-                         .set_decoration(&logger_decoration)
-                         .set_stream(&bilog_demo_stream);
+        .set_decoration(&logger_decoration)
+        .set_stream(&bilog_demo_stream);
 
-    Logger *std_logger{standard_logger_builder.build()};
-    Logger *str_logger{stream_logger_builder.build()};
+    Logger *std_logger{ standard_logger_builder.build() };
+    Logger *str_logger{ stream_logger_builder.build() };
 
-    ThreadLogger bilog_thread_std_logger{std_logger};
-    ThreadLogger bilog_thread_str_logger{str_logger};
+    ThreadLogger bilog_thread_std_logger{ std_logger };
+    ThreadLogger bilog_thread_str_logger{ str_logger };
 
-    BiLogger bi_logger{&bilog_thread_std_logger, &bilog_thread_str_logger};
+    BiLogger bi_logger{ &bilog_thread_std_logger, &bilog_thread_str_logger };
 
     bi_logger.write(info, "All levels");
     bi_logger.write(debug, "Debug message");

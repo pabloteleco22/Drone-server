@@ -29,9 +29,7 @@ class Polygon {
 private:
     Points vertices;
 
-    static bool get_cut(const Segment &s1, const Segment &s2, double s,
-                const Polygon &poly1, const Polygon &poly2,
-                Segment &cut);
+    static bool get_cut(const Segment &s1, const Segment &s2, double s, const Polygon &poly1, const Polygon &poly2, Segment &cut);
 
 public:
     Polygon();
@@ -40,21 +38,21 @@ public:
     Polygon(const Points &p);
 
     class NotEnoughPointsException : public std::exception {
-        std::string message{"The polygon has not enough vertices"};
-        public:
-            NotEnoughPointsException();
-            NotEnoughPointsException(const std::string &message);
-            NotEnoughPointsException(const char *message);
-            const char *what() const noexcept override;
+        std::string message{ "The polygon has not enough vertices" };
+    public:
+        NotEnoughPointsException();
+        NotEnoughPointsException(const std::string &message);
+        NotEnoughPointsException(const char *message);
+        const char *what() const noexcept override;
     };
 
     class CannotSplitException : public std::exception {
-        std::string message{"The polygon has not enough vertices"};
-        public:
-            CannotSplitException ();
-            CannotSplitException (const std::string &message);
-            CannotSplitException (const char *message);
-            const char *what() const noexcept override;
+        std::string message{ "The polygon has not enough vertices" };
+    public:
+        CannotSplitException();
+        CannotSplitException(const std::string &message);
+        CannotSplitException(const char *message);
+        const char *what() const noexcept override;
     };
 
     /**
@@ -75,7 +73,7 @@ public:
      * poly2: The resulting polygon with the specified area.
      * @param
      * cut_line: The line dividing the two polygons.
-     * 
+     *
      * @returns
      * true: if it is possible.
      * false: if it is not possible.
@@ -85,7 +83,7 @@ public:
     /**
      * @brief Returns the distance between the nearest point of the polygon
      * and the point passed by parameters.
-     * 
+     *
      * @throws
      * Polygon::VoidPolygonExcception: if the polygon contains no points.
     */
@@ -94,7 +92,7 @@ public:
     /**
      * @brief Returns the point of the polygon nearest to the one passed by
      * parameters.
-     * 
+     *
      * @throws
      * Polygon::VoidPolygonExcception: if the polygon contains no points.
     */
@@ -102,7 +100,7 @@ public:
 
     /**
      * @brief Returns the centroid of the polygon.
-     * 
+     *
      * @throws
      * Polygon::VoidPolygonExcception: if the polygon contains no points.
     */
@@ -116,21 +114,21 @@ public:
 
     /**
      * @brief Returns true if the point passed by parameters is contained
-     * within the edges of the polygon. 
+     * within the edges of the polygon.
     */
     bool is_point_inside(const Point &point) const;
 
     /**
      * @brief Returns true if the segment passed by parameters is contained
-     * within the edges of the polygon. 
-     * 
+     * within the edges of the polygon.
+     *
      * @param
      * exclude_line1: The index of the first segment to be disregarded in the analysis.
      * @param
      * exclude_line2: The index of the second segment to be disregarded in the analysis.
     */
     bool is_segment_inside(const Segment &segment, size_t exclude_line1, size_t exclude_line2) const;
-    
+
     /**
      * @brief Returns true if the vertices are in clock wise order.
     */
@@ -182,24 +180,24 @@ public:
 };
 
 namespace poly_private {
-struct Polygons {
-    Polygons(const Segment &s1, const Segment &s2);
-    bool find_cut_line(double square, Segment &cut_line);
+    struct Polygons {
+        Polygons(const Segment &s1, const Segment &s2);
+        bool find_cut_line(double square, Segment &cut_line);
 
-    Line bisector;
+        Line bisector;
 
-    Polygon left_triangle;
-    Polygon trapezoid;
-    Polygon right_triangle;
+        Polygon left_triangle;
+        Polygon trapezoid;
+        Polygon right_triangle;
 
-    bool p1_exist;
-    bool p2_exist;
-    bool p3_exist;
-    bool p4_exist;
+        bool p1_exist;
+        bool p2_exist;
+        bool p3_exist;
+        bool p4_exist;
 
-    double left_triangle_square;
-    double trapezoid_square;
-    double right_triangle_square;
-    double total_square;
-};
+        double left_triangle_square;
+        double trapezoid_square;
+        double right_triangle_square;
+        double total_square;
+    };
 };

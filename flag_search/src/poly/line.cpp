@@ -46,7 +46,7 @@ Line::Line(const Point &p1, const Point &p2) : p1(p1), p2(p2) {
     c = p1.x * p2.y - p2.x * p1.y;
 }
 
-Line::Line(double a, double b, double c) : a{a}, b{b}, c{c} {
+Line::Line(double a, double b, double c) : a{ a }, b{ b }, c{ c } {
     if (fabs(a) <= POLY_SPLIT_EPS && fabs(b) >= POLY_SPLIT_EPS) {
         p1.x = -1000;
         p1.y = -(c / b);
@@ -71,20 +71,20 @@ Line::Line(double a, double b, double c) : a{a}, b{b}, c{c} {
 Line::Line(Point p, Vector v) : Line(p, p + v) {}
 
 double Line::get_distance(const Point &point) const {
-    double n{a * point.x + b * point.y + c};
-    double m{sqrt(a * a + b * b)};
+    double n{ a * point.x + b * point.y + c };
+    double m{ sqrt(a * a + b * b) };
     assert(m != 0);
     return n / m;
 }
 
 Point Line::get_nearest_point(const Point &point) const {
-    Vector dir{b, -a};
-    double u{Vector{point - p1}.dot(dir) / dir.square_length()};
+    Vector dir{ b, -a };
+    double u{ Vector{point - p1}.dot(dir) / dir.square_length() };
     return p1 + dir * u;
 }
 
 PointSide Line::point_side(const Point &point) const {
-    double s{a * (point.x - p1.x) + b * (point.y - p1.y)};
+    double s{ a * (point.x - p1.x) + b * (point.y - p1.y) };
     if (s > 0) {
         return PointSide::Above;
     } else if (s < 0) {
@@ -111,7 +111,7 @@ inline double maximum(double a, double b) {
 }
 
 bool Line::cross_line(const Line &line, Point &result) const {
-    double d{det(a, b, line.a, line.b)};
+    double d{ det(a, b, line.a, line.b) };
     if (d == 0)
         return false;
 
@@ -137,16 +137,16 @@ Line &Line::operator=(const Line &other) {
 
 Line Line::get_bisector(const Line &l1, const Line &l2) {
     if (l1 == l2) {
-        return Line{l1};
+        return Line{ l1 };
     } else {
-        double q1{sqrt(l1.a * l1.a + l1.b * l1.b)};
-        double q2{sqrt(l2.a * l2.a + l2.b * l2.b)};
+        double q1{ sqrt(l1.a * l1.a + l1.b * l1.b) };
+        double q2{ sqrt(l2.a * l2.a + l2.b * l2.b) };
 
-        double a{l1.a / q1 - l2.a / q2};
-        double b{l1.b / q1 - l2.b / q2};
-        double c{l1.c / q1 - l2.c / q2};
+        double a{ l1.a / q1 - l2.a / q2 };
+        double b{ l1.b / q1 - l2.b / q2 };
+        double c{ l1.c / q1 - l2.c / q2 };
 
-        return Line{a, b, c};
+        return Line{ a, b, c };
     }
 }
 
@@ -163,14 +163,14 @@ Point Line::get_p2() const {
 }
 
 double Line::square_length() const {
-    double x{p2.x - p1.x};
-    double y{p2.y - p1.y};
+    double x{ p2.x - p1.x };
+    double y{ p2.y - p1.y };
 
     return x * x + y * y;
 }
 
 Point Line::get_point_along(double t) const {
-    return p1 + Vector{p2 - p1}.unit() * t;
+    return p1 + Vector{ p2 - p1 }.unit() * t;
 }
 
 std::ostream &operator<<(std::ostream &out, const Line &l) {

@@ -69,7 +69,7 @@ TEST(OperationTools, CheckDefaultCritical) {
 TEST(OperationTools, GetDefaultName) {
     OperationTools operation_tools;
 
-    std::string operation_name{"Hola mundo"};
+    std::string operation_name{ "Hola mundo" };
 
     operation_tools.set_name(operation_name);
 

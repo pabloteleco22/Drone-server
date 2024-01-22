@@ -40,8 +40,7 @@ Mission::MissionItem MissionHelper::make_mission_item(
     bool is_fly_through,
     float gimbal_pitch_deg,
     float gimbal_yaw_deg,
-    Mission::MissionItem::CameraAction camera_action)
-{
+    Mission::MissionItem::CameraAction camera_action) {
     Mission::MissionItem new_item{};
     new_item.latitude_deg = latitude_deg;
     new_item.longitude_deg = longitude_deg;

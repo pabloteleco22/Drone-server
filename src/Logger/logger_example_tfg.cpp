@@ -12,7 +12,7 @@ int main() {
     Error error;
 
     StandardLoggerBuilder logger_builder;
-    Logger *standard_logger{logger_builder.build()};
+    Logger *standard_logger{ logger_builder.build() };
 
     standard_logger->write(debug, "Mensaje de depuración");
     standard_logger->write(info, "Mensaje de información");
@@ -20,7 +20,7 @@ int main() {
     standard_logger->write(error, "Mensaje de error");
 
     delete standard_logger;
-    
+
     return 0;
 }
 #elif defined(EX2)
@@ -39,11 +39,11 @@ int main() {
     Error error;
 
     HourLoggerDecoration decoration;
-    std::fstream out_stream{"registro.log", ios::out};
-    StreamLoggerBuilder logger_builder{&out_stream};
+    std::fstream out_stream{ "registro.log", ios::out };
+    StreamLoggerBuilder logger_builder{ &out_stream };
     logger_builder.set_decoration(&decoration);
 
-    Logger *stream_logger{logger_builder.build()};
+    Logger *stream_logger{ logger_builder.build() };
 
     stream_logger->write(debug, "Mensaje de depuración");
     stream_logger->write(info, "Mensaje de información");
@@ -51,7 +51,7 @@ int main() {
     stream_logger->write(error, "Mensaje de error");
 
     delete stream_logger;
-    
+
     return 0;
 }
 #elif defined(EX3)
@@ -73,7 +73,7 @@ int main() {
     TimedLoggerDecoration time_decoration;
 
     HourLoggerDecoration hour_decoration;
-    
+
     UserCustomGreeter custom_greeter{
         [&hour_decoration](const string &) {
             string message{"Logger empezado a las " +
@@ -88,20 +88,20 @@ int main() {
         }
     };
 
-    std::fstream out_stream{"registro.log", ios::out};
+    std::fstream out_stream{ "registro.log", ios::out };
 
     StandardLoggerBuilder standard_logger_builder;
-    StreamLoggerBuilder stream_logger_builder{&out_stream};
+    StreamLoggerBuilder stream_logger_builder{ &out_stream };
 
     standard_logger_builder.set_decoration(&hour_decoration)
-                           .set_greeter(&custom_greeter);
-    
+        .set_greeter(&custom_greeter);
+
     stream_logger_builder.set_decoration(&time_decoration)
-                         .set_greeter(&custom_greeter);
-    
-    Logger *standard_logger{standard_logger_builder.build()};
-    Logger *stream_logger{stream_logger_builder.build()};
-    BiLogger bi_logger{standard_logger, stream_logger};
+        .set_greeter(&custom_greeter);
+
+    Logger *standard_logger{ standard_logger_builder.build() };
+    Logger *stream_logger{ stream_logger_builder.build() };
+    BiLogger bi_logger{ standard_logger, stream_logger };
 
     bi_logger.write(debug, "Mensaje de depuración");
     bi_logger.write(info, "Mensaje de información");
@@ -110,7 +110,7 @@ int main() {
 
     delete standard_logger;
     delete stream_logger;
-    
+
     return 0;
 }
 #elif defined(EX4)
@@ -125,7 +125,7 @@ int main() {
     Error error;
 
     StandardLoggerBuilder logger_builder;
-    Logger *standard_logger{logger_builder.build()};
+    Logger *standard_logger{ logger_builder.build() };
 
     UserCustomFilter custom_filter{
         [&debug, &warning](const Level &level) {
@@ -141,7 +141,7 @@ int main() {
     standard_logger->write(error, "Mensaje de error");
 
     delete standard_logger;
-    
+
     return 0;
 }
 #endif

@@ -30,7 +30,7 @@ Flag::Position Flag::get_flag_position() const {
 
 Flag::operator std::string() const {
     return ("Latitude [deg]: " + std::to_string(pos.latitude_deg) + "\n"
-            + "Longitude [deg]: " + std::to_string(pos.longitude_deg));
+        + "Longitude [deg]: " + std::to_string(pos.longitude_deg));
 }
 
 FixedFlag::FixedFlag() {
@@ -75,9 +75,9 @@ double RandomFlag::MaxMin::get_interval() const {
     return this->max - this->min;
 }
 
-/** 
+/**
  * @brief Generates a flag in a given area.
- * 
+ *
  * @param use_seed:
  * Indicates whether a time seed should be used when generating random numbers.
  * Otherwise the default seed will be used.
@@ -102,9 +102,9 @@ RandomFlag::RandomFlag(const bool use_seed) {
     }
 }
 
-/** 
+/**
  * @brief Generates a flag in a given area.
- * 
+ *
  * @param use_seed:
  * Indicates whether a time seed should be used when generating random numbers.
  * Otherwise the default seed will be used.
@@ -129,24 +129,24 @@ RandomFlag::RandomFlag(const MaxMin &latitude_deg_interval, const MaxMin &longit
     }
 }
 
-/** 
+/**
  * @brief Generates a flag in a given area.
- * 
+ *
  * @param use_seed:
  * Indicates whether a time seed should be used when generating random numbers.
  * Otherwise the default seed will be used.
  */
 RandomFlagPoly::RandomFlagPoly(const bool use_seed) {
     Polygon polygon;
-    
-    for (Point vertex : default_polygon_vertices){
+
+    for (Point vertex : default_polygon_vertices) {
         polygon.push_back(vertex);
     }
 
-    Point max{polygon[0]};
-    Point min{polygon[0]};
+    Point max{ polygon[0] };
+    Point min{ polygon[0] };
 
-    size_t poly_size{polygon.size()};
+    size_t poly_size{ polygon.size() };
 
     for (size_t i = 0; i < poly_size; ++i) {
         if (min.x > polygon[i].x)
@@ -162,37 +162,37 @@ RandomFlagPoly::RandomFlagPoly(const bool use_seed) {
             max.y = polygon[i].y;
     }
 
-    RandomFlag::MaxMin maxmin_latitude_deg{max.x, min.x};
-    RandomFlag::MaxMin maxmin_longitude_deg{max.y, min.y};
+    RandomFlag::MaxMin maxmin_latitude_deg{ max.x, min.x };
+    RandomFlag::MaxMin maxmin_longitude_deg{ max.y, min.y };
 
-    bool cont{true};
+    bool cont{ true };
     do {
-        Position r_pos{RandomFlag{maxmin_latitude_deg, maxmin_longitude_deg, use_seed}
-            .get_flag_position()};
+        Position r_pos{ RandomFlag{maxmin_latitude_deg, maxmin_longitude_deg, use_seed}
+            .get_flag_position() };
 
-        if (polygon.is_point_inside(Point{r_pos.latitude_deg, r_pos.longitude_deg})) {
+        if (polygon.is_point_inside(Point{ r_pos.latitude_deg, r_pos.longitude_deg })) {
             pos = r_pos;
             cont = false;
         }
     } while (cont);
 }
 
-/** 
+/**
  * @brief Generates a flag in a given area.
- * 
+ *
  * @param polygon:
  * Accepts a polygon that delimits the region over which the flag can be generated.
  * Vertices are points that follow the format (latitude, longitude).
- * 
+ *
  * @param use_seed:
  * Indicates whether a time seed should be used when generating random numbers.
  * Otherwise the default seed will be used.
  */
 RandomFlagPoly::RandomFlagPoly(const Polygon polygon, const bool use_seed) {
-    Point max{polygon[0]};
-    Point min{polygon[0]};
+    Point max{ polygon[0] };
+    Point min{ polygon[0] };
 
-    size_t poly_size{polygon.size()};
+    size_t poly_size{ polygon.size() };
 
     for (size_t i = 0; i < poly_size; ++i) {
         if (min.x > polygon[i].x)
@@ -208,15 +208,15 @@ RandomFlagPoly::RandomFlagPoly(const Polygon polygon, const bool use_seed) {
             max.y = polygon[i].y;
     }
 
-    RandomFlag::MaxMin maxmin_latitude_deg{max.x, min.x};
-    RandomFlag::MaxMin maxmin_longitude_deg{max.y, min.y};
+    RandomFlag::MaxMin maxmin_latitude_deg{ max.x, min.x };
+    RandomFlag::MaxMin maxmin_longitude_deg{ max.y, min.y };
 
-    bool cont{true};
+    bool cont{ true };
     do {
-        Position r_pos{RandomFlag{maxmin_latitude_deg, maxmin_longitude_deg, use_seed}
-            .get_flag_position()};
+        Position r_pos{ RandomFlag{maxmin_latitude_deg, maxmin_longitude_deg, use_seed}
+            .get_flag_position() };
 
-        if (polygon.is_point_inside(Point{r_pos.latitude_deg, r_pos.longitude_deg})) {
+        if (polygon.is_point_inside(Point{ r_pos.latitude_deg, r_pos.longitude_deg })) {
             pos = r_pos;
             cont = false;
         }

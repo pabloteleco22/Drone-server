@@ -30,7 +30,7 @@ struct Vector {
 
     Vector(const Point &p);
     Vector(const Vector &v);
-    Vector(double x=0.0f, double y=0.0f);
+    Vector(double x = 0.0f, double y = 0.0f);
     Vector &operator=(const Vector &v);
     Vector operator-() const;
     Vector &operator+=(const Vector &v);
@@ -50,7 +50,7 @@ struct Vector {
     bool operator!=(const Vector &v) const;
     Vector abs() const;
     friend Point operator+(const Point &p, const Vector &v);
-    friend std::ostream& operator<<(std::ostream &out, const Vector &v);
+    friend std::ostream &operator<<(std::ostream &out, const Vector &v);
 };
 
 using Vectors = std::vector<Vector>;

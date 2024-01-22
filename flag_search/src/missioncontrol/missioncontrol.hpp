@@ -35,29 +35,26 @@
 using std::string;
 
 struct MCSSuscribePositionFailure : public MissionControllerStatus {
-    MCSSuscribePositionFailure () : MissionControllerStatus(code, message) {}
+    MCSSuscribePositionFailure() : MissionControllerStatus(code, message) {}
 
     static const int code;
     static const string message;
 };
 
 struct SearchController : public MissionController {
-    SearchController(mavsdk::Telemetry *telemetry,
-                    const Flag *flag,
-                    std::function<void(Flag::Position, bool)> callback,
-                    double position_rate, double detection_radius);
+    SearchController(mavsdk::Telemetry *telemetry, const Flag *flag, std::function<void(Flag::Position, bool)> callback, double position_rate, double detection_radius);
 
     /**
      * @brief Asynchronous method that controls the execution of the mission
     */
     MissionControllerStatus mission_control() override;
 
-    private:
-        mavsdk::Telemetry *telemetry;
-        const Flag *flag;
-        std::function<void(Flag::Position, bool)> callback;
-        double position_rate;
-        double detection_radius;
-        static std::mutex mut;
-        static bool flag_found;
+private:
+    mavsdk::Telemetry *telemetry;
+    const Flag *flag;
+    std::function<void(Flag::Position, bool)> callback;
+    double position_rate;
+    double detection_radius;
+    static std::mutex mut;
+    static bool flag_found;
 };

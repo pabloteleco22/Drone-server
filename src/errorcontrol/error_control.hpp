@@ -30,33 +30,33 @@ class ProRetCod {
 	int code;
 	string message;
 
-	protected:
-		/**
-		 * @brief To create an instance with an error code and a particular message
-		*/
-		ProRetCod(int code, string message) : code{code}, message{message} {}
+protected:
+	/**
+	 * @brief To create an instance with an error code and a particular message
+	*/
+	ProRetCod(int code, string message) : code{ code }, message{ message } {}
 
-	public:
-		ProRetCod(const ProRetCod &other) : code{other.code}, message{other.message} {}
-		ProRetCod &operator=(const ProRetCod &other) {
-			code = other.code;
-			message = other.message;
+public:
+	ProRetCod(const ProRetCod &other) : code{ other.code }, message{ other.message } {}
+	ProRetCod &operator=(const ProRetCod &other) {
+		code = other.code;
+		message = other.message;
 
-			return *this;
-		}
-		bool operator==(const ProRetCod &other) const {
-			return ((code == other.code) and (message == other.message));
-		}
-		bool operator!=(const ProRetCod &other) const {
-			return ((code != other.code) or (message != other.message));
-		}
+		return *this;
+	}
+	bool operator==(const ProRetCod &other) const {
+		return ((code == other.code) and (message == other.message));
+	}
+	bool operator!=(const ProRetCod &other) const {
+		return ((code != other.code) or (message != other.message));
+	}
 
-		int get_code() const {
-			return code;
-		}
-		string get_string() const {
-			return message;
-		}
+	int get_code() const {
+		return code;
+	}
+	string get_string() const {
+		return message;
+	}
 };
 
 struct OkCode : public ProRetCod {
@@ -124,46 +124,46 @@ struct UnknownFailure : public ProRetCod {
 
 /** Check enough systems **/
 class CheckEnoughSystems {
-	protected:
-	 	mutable mutex mut;
-		const float expected_systems;
-		float number_of_systems{0};
+protected:
+	mutable mutex mut;
+	const float expected_systems;
+	float number_of_systems{ 0 };
 
-	public:
-		/**
-		 * @param expected_systems: maximum number of systems expected
-		*/
-		CheckEnoughSystems(float expected_systems) : expected_systems{expected_systems} {}
-		virtual ~CheckEnoughSystems() {}
+public:
+	/**
+	 * @param expected_systems: maximum number of systems expected
+	*/
+	CheckEnoughSystems(float expected_systems) : expected_systems{ expected_systems } {}
+	virtual ~CheckEnoughSystems() {}
 
-		/**
-		 * @brief Indicates whether there are enough systems
-		*/
-		virtual bool exists_enough_systems() const = 0;
+	/**
+	 * @brief Indicates whether there are enough systems
+	*/
+	virtual bool exists_enough_systems() const = 0;
 
-		/**
-		 * @brief Generates a message in a string indicating the status of the test
-		*/
-		virtual string get_status() const = 0;
+	/**
+	 * @brief Generates a message in a string indicating the status of the test
+	*/
+	virtual string get_status() const = 0;
 
-		/**
-		 * @brief Appends a system to the systems counter
-		*/
-		virtual void append_system(float num=1);
+	/**
+	 * @brief Appends a system to the systems counter
+	*/
+	virtual void append_system(float num = 1);
 
-		/**
-		 * @brief Subtracts a system to the systems counter
-		*/
-		virtual void subtract_system(float num=1);
+	/**
+	 * @brief Subtracts a system to the systems counter
+	*/
+	virtual void subtract_system(float num = 1);
 
-		/**
-		 * @brief Gets the value of the systems counter
-		*/
-		virtual float get_number_of_systems() const;
+	/**
+	 * @brief Gets the value of the systems counter
+	*/
+	virtual float get_number_of_systems() const;
 };
 
 struct PercentageCheck final : public CheckEnoughSystems {
-	PercentageCheck(const float expected_systems, const float percentage_drones_required=100.0f);
+	PercentageCheck(const float expected_systems, const float percentage_drones_required = 100.0f);
 
 	/**
 	 * @brief Indicates whether there are enough systems
@@ -175,7 +175,7 @@ struct PercentageCheck final : public CheckEnoughSystems {
 	*/
 	string get_status() const override;
 
-	private:
-		float percentage_required;
-		float required_systems;
+private:
+	float percentage_required;
+	float required_systems;
 };

@@ -3,17 +3,17 @@
 #include "logger.hpp"
 
 namespace simple_logger {
-struct LoggerBuilder {
-    virtual Logger *build() = 0;
-};
+    struct LoggerBuilder {
+        virtual Logger *build() = 0;
+    };
 
-class StandardLoggerBuilder : public LoggerBuilder {
-    VoidLoggerDecoration default_decoration;
-    ColorfulDefaultGreeter default_greeter;
-    string greeting_string{StandardLogger::default_greeting_message};
+    class StandardLoggerBuilder : public LoggerBuilder {
+        VoidLoggerDecoration default_decoration;
+        ColorfulDefaultGreeter default_greeter;
+        string greeting_string{ StandardLogger::default_greeting_message };
 
-    const LoggerDecoration *decoration{&default_decoration};
-    const Greeter *greeter{&default_greeter};
+        const LoggerDecoration *decoration{ &default_decoration };
+        const Greeter *greeter{ &default_greeter };
 
     public:
         Logger *build() override;
@@ -21,16 +21,16 @@ class StandardLoggerBuilder : public LoggerBuilder {
         StandardLoggerBuilder &set_greeter(const Greeter *greeter);
         StandardLoggerBuilder &set_greeting_string(const string &greeting_string);
         StandardLoggerBuilder &reset_config();
-};
+    };
 
-class StreamLoggerBuilder : public LoggerBuilder {
-    VoidLoggerDecoration default_decoration;
-    DefaultGreeter default_greeter;
-    string greeting_string = StreamLogger::default_greeting_message;
+    class StreamLoggerBuilder : public LoggerBuilder {
+        VoidLoggerDecoration default_decoration;
+        DefaultGreeter default_greeter;
+        string greeting_string = StreamLogger::default_greeting_message;
 
-    const LoggerDecoration *decoration{&default_decoration};
-    const Greeter *greeter{&default_greeter};
-    std::ostream *stream;
+        const LoggerDecoration *decoration{ &default_decoration };
+        const Greeter *greeter{ &default_greeter };
+        std::ostream *stream;
 
     public:
         StreamLoggerBuilder(std::ostream *stream);
@@ -40,5 +40,5 @@ class StreamLoggerBuilder : public LoggerBuilder {
         StreamLoggerBuilder &set_greeter(const Greeter *greeter);
         StreamLoggerBuilder &set_greeting_string(const string &greeting_string);
         StreamLoggerBuilder &reset_config();
-};
+    };
 };

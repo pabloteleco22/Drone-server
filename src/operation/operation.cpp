@@ -27,7 +27,7 @@ OperationTools::OperationTools() {
 
 ProRetCod OperationTools::get_status_code() const {
     mut.lock();
-    ProRetCod cod{operation_code};
+    ProRetCod cod{ operation_code };
     mut.unlock();
 
     return cod;

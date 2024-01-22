@@ -42,7 +42,7 @@ Vector &Vector::operator=(const Vector &v) {
 }
 
 Vector Vector::operator-() const {
-    return Vector{-p};
+    return Vector{ -p };
 }
 
 Vector &Vector::operator+=(const Vector &v) {
@@ -70,19 +70,19 @@ Vector &Vector::operator/=(double v) {
 }
 
 Vector Vector::operator-(const Vector &v) const {
-    return Vector{p - v.p};
+    return Vector{ p - v.p };
 }
 
 Vector Vector::operator+(const Vector &v) const {
-    return Vector{p + v.p};
+    return Vector{ p + v.p };
 }
 
 Vector Vector::operator*(const double v) const {
-    return Vector{p * v};
+    return Vector{ p * v };
 }
 
 Vector Vector::operator/(const double v) const {
-    return Vector{p / v};
+    return Vector{ p / v };
 }
 
 double Vector::dot(const Vector &v) const {
@@ -94,7 +94,7 @@ double Vector::length(void) const {
 }
 
 double Vector::square_length(void) const {
-    return p.square_distance({0, 0});
+    return p.square_distance({ 0, 0 });
 }
 
 Vector Vector::unit(void) const {
@@ -102,14 +102,14 @@ Vector Vector::unit(void) const {
     if (l == 0)
         return Vector{};
     else
-        return Vector{p / l};
+        return Vector{ p / l };
 }
 
 Vector Vector::norm(void) const {
     if (length() == 0)
         return Vector{};
     else
-        return Vector{y, -x};
+        return Vector{ y, -x };
 }
 
 bool Vector::operator==(const Vector &v) const {
@@ -121,14 +121,14 @@ bool Vector::operator!=(const Vector &v) const {
 }
 
 Vector Vector::abs() const {
-    return Vector{p.abs()};
+    return Vector{ p.abs() };
 }
 
 Point operator+(const Point &p, const Vector &v) {
-    return Point{p.x + v.x, p.y + v.y};
+    return Point{ p.x + v.x, p.y + v.y };
 }
 
-std::ostream& operator<<(std::ostream &out, const Vector &v) {
+std::ostream &operator<<(std::ostream &out, const Vector &v) {
     out << v.p;
     return out;
 }
